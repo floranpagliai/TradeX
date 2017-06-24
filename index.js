@@ -1,4 +1,5 @@
 let Gdax = require('gdax');
+let fs = require('fs');
 
 let endpoint = 'https://api-public.sandbox.gdax.com';
 let device1 = 'BTC';
@@ -92,27 +93,27 @@ let callback = function (err, response, data) {
     let i = 0;
     for (i = 0, len = data.length; i < len; i++) {
         _stockPrices.push(data[i][4]);
-        // console.log((new Date(data[i][0] * 1000)).toLocaleString());
+        // log((new Date(data[i][0] * 1000)).toLocaleString());
         getSignal(true);
     }
     i = i -1;
     if (lastTime < data[i][0]) {
         lastTime = data[i][0];
         let date = (new Date(data[i][0] * 1000)).toLocaleString();
-        let log = date + '[low='+data[i][1]+']'+'[high='+data[i][2]+']'+'[open='+data[i][3]+']'+'[close='+data[i][4]+']';
+        let text = date + '[low='+data[i][1]+']'+'[high='+data[i][2]+']'+'[open='+data[i][3]+']'+'[close='+data[i][4]+']';
         let signal = getSignal();
         if (signal == 'BUY' ) {
-            console.log(log + ': BUY');
-            buy(bestBid)
+            log(text + ': BUY');
+            buy(bestBid);
         } else if (signal == 'SELL') {
-            console.log(log + ': SELL');
-            sell(bestAsk)
+            log(text + ': SELL');
+            sell(bestAsk);
         } else {
-            console.log(log + ': WAIT');
+            log(text + ': WAIT');
         }
     }
-    console.log(eurWallet.available + 'eur');
-    console.log(btcWallet.available + 'btc or ' + btcWallet.available * data[i][4] + 'eur');
+    log(eurWallet.available + 'eur');
+    log(btcWallet.available + 'btc or ' + btcWallet.available * data[i][4] + 'eur');
 };
 
 let accountsCallback = function (err, response, data) {
@@ -127,7 +128,7 @@ let accountsCallback = function (err, response, data) {
 };
 
 let orderCallback = function (err, response, data) {
-    console.log(data);
+    log(data);
 };
 
 function getSignal(saveState = false) {
@@ -169,7 +170,7 @@ function buy(stockPrice) {
         // btcWallet.available = btcWallet.available + ( eurWallet.available / stockPrice);
         // eurWallet.available = eurWallet.available - (eurWallet.available / stockPrice);
     } else {
-        console.log('No money for buying.')
+        log('No money for buying.')
     }
     state = 'BUY';
 }
@@ -185,7 +186,7 @@ function sell(stockPrice) {
         // eurWallet.available = (eurWallet.startingBalance/stockPrice) * stockPrice;
         // btcWallet.available = btcWallet.available - (eurWallet.startingBalance/stockPrice);
     } else {
-        console.log('No bitcoin to sell.')
+        log('No bitcoin to sell.')
     }
     state = 'SELL';
 }
@@ -210,6 +211,11 @@ function MACD(EMAShort, EMALong) {
     return exponentialMovingAverage(EMAShort, _stockPrices) - exponentialMovingAverage(EMALong, _stockPrices);
 }
 
+function log(log) {
+    console.log(log);
+    fs.appendFileSync('log.txt', log + '\n');
+}
+
 // Init accounts
 btcWallet = new Account(0, device1, 0, 0, 0);
 eurWallet = new Account(0, device2, 0, 0, 0);
@@ -222,10 +228,12 @@ function trade() {
 
 function book() {
     publicClient.getProductOrderBook({'level': 1}, function (err, response, data) {
-        bestBid = parseFloat(data['bids'][0][0]); // device to buy
-        bestAsk = parseFloat(data['asks'][0][0]);  // device to sell
+        if (typeof data['bids'][0][0] != 'undefined' && typeof data['asks'][0][0] != 'undefined') {
+            bestBid = parseFloat(data['bids'][0][0]); // device to buy
+            bestAsk = parseFloat(data['asks'][0][0]);  // device to sell
 
-        console.log('best bid='+bestBid+' best ask='+bestAsk);
+            log('best bid='+bestBid+' best ask='+bestAsk);
+        }
     });
 }
 
@@ -239,7 +247,7 @@ setInterval(function() {
 
 
 // publicClient.getProducts(function (err, response, data) {
-//     console.log(data);
+//     log(data);
 // });
 /**
  * Au lancement récup du capital dispo
