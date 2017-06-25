@@ -25,7 +25,7 @@ class Account {
         this._currency = currency;
         this._balance = balance;
         this._startingBalance = balance;
-        this._available = available;
+        this._available = (available).toFixed(2);
         this._hold = hold;
     }
 
@@ -104,16 +104,18 @@ let callback = function (err, response, data) {
         let signal = getSignal();
         if (signal == 'BUY' ) {
             log(text + ': BUY');
-            buy(bestBid);
+            buy((bestAsk*100 - 1)/100);
         } else if (signal == 'SELL') {
             log(text + ': SELL');
-            sell(bestAsk);
+            sell((bestBid*100 + 1)/100);
         } else {
             log(text + ': WAIT');
         }
+        if (signal == 'BUY' || signal == 'SELL') {
+            log(eurWallet.available + 'eur');
+            log(btcWallet.available + 'btc or ' + btcWallet.available * data[i][4] + 'eur');
+        }
     }
-    log(eurWallet.available + 'eur');
-    log(btcWallet.available + 'btc or ' + btcWallet.available * data[i][4] + 'eur');
 };
 
 let accountsCallback = function (err, response, data) {
@@ -128,7 +130,7 @@ let accountsCallback = function (err, response, data) {
 };
 
 let orderCallback = function (err, response, data) {
-    log(data);
+    log(JSON.stringify(data));
 };
 
 function getSignal(saveState = false) {
@@ -162,8 +164,8 @@ function getSignal(saveState = false) {
 function buy(stockPrice) {
     if (eurWallet.available > stockPrice * 0.01 && stockPrice > 0) {
         let params = {
-            'price': (stockPrice - 0.01).toFixed(2),
-            'size': (eurWallet.available/stockPrice).toFixed(6),  // BTC
+            'price': stockPrice,
+            'size': Math.floor(eurWallet.available/stockPrice * 10000)/10000,  // BTC
             'product_id': product,
         };
         authedClient.buy(params, orderCallback);
@@ -178,7 +180,7 @@ function buy(stockPrice) {
 function sell(stockPrice) {
     if (btcWallet.available > 0.01 && stockPrice > 0) {
         let params = {
-            'price': (stockPrice + 0.01).toFixed(2),
+            'price': stockPrice,
             'size': btcWallet.available,  // BTC
             'product_id': product,
         };
@@ -231,8 +233,6 @@ function book() {
         if (typeof data['bids'][0][0] != 'undefined' && typeof data['asks'][0][0] != 'undefined') {
             bestBid = parseFloat(data['bids'][0][0]); // device to buy
             bestAsk = parseFloat(data['asks'][0][0]);  // device to sell
-
-            log('best bid='+bestBid+' best ask='+bestAsk);
         }
     });
 }
@@ -242,8 +242,9 @@ book();
 trade();
 setInterval(function() {
     book();
-    trade()
-}, 100000);
+    trade();
+    // buy((bestAsk*100 - 1)/100);
+}, 10000);
 
 
 // publicClient.getProducts(function (err, response, data) {
