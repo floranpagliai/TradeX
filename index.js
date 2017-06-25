@@ -43,7 +43,7 @@ let tradeCallback = function (err, response, data) {
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
     if (lastTime < times[times.length - 1]) {
         lastTime = times[times.length - 1];
-        let date = (new Date(lastTime * 1000)).toLocaleString();
+        let date = (new Date(lastTime * 1000)).toLocaleString('fr-fr');
         let signal = getSignal();
         if (signal == 'BUY') {
             log(date + ': BUY' );
@@ -107,12 +107,12 @@ function buy(price) {
             'product_id': config.product.id,
         };
         authedClient.buy(params, orderCallback);
-        log((new Date()).toLocaleString() + ': Buy ' + params.size + ' for ' + params.price);
+        log((new Date()).toLocaleString('fr-fr') + ': Buy ' + params.size + ' for ' + params.price);
 
         // baseCurrencyAccount.available = baseCurrencyAccount.available + ( quoteCurrencyAccount.available / stockPrice);
         // quoteCurrencyAccount.available = quoteCurrencyAccount.available - (quoteCurrencyAccount.available / stockPrice);
     } else {
-        log((new Date()).toLocaleString() + ': No money for buying.');
+        log((new Date()).toLocaleString('fr-fr') + ': No money for buying.');
     }
 }
 
@@ -124,11 +124,11 @@ function sell(price) {
             'product_id': config.product.id,
         };
         authedClient.sell(params, orderCallback);
-        log((new Date()).toLocaleString() + ': Buy ' + params.size + ' for ' + params.price);
+        log((new Date()).toLocaleString('fr-fr') + ': Buy ' + params.size + ' for ' + params.price);
         // quoteCurrencyAccount.available = (quoteCurrencyAccount.startingBalance/stockPrice) * stockPrice;
         // baseCurrencyAccount.available = baseCurrencyAccount.available - (quoteCurrencyAccount.startingBalance/stockPrice);
     } else {
-        log((new Date()).toLocaleString() + ': No bitcoin to sell.')
+        log((new Date()).toLocaleString('fr-fr') + ': No bitcoin to sell.')
     }
 }
 

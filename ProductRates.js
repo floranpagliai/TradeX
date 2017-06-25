@@ -4,10 +4,11 @@ class ProductRates {
         this._lowPrices = lowPrices;
         this._highPrices = highPrices;
         this._openPrices = openPrices;
-        this._closPricese = closePrices;
+        this._closePrices = closePrices;
         this._volumes = volumes;
         this._closePrices = closePrices;
     }
+
 
     get times() {
         return this._times;
