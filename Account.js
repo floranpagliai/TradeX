@@ -55,4 +55,14 @@ class Account {
     set startingBalance(value) {
         return this._startingBalance = value;
     }
+
+    update(id, currency, balance, available, hold) {
+        this._id = id;
+        this._currency = currency;
+        this._balance = balance;
+        this._available = available;
+        this._hold = hold;
+    }
 }
+
+module.exports = Account;

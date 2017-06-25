@@ -1,119 +1,62 @@
 let Gdax = require('gdax');
 let fs = require('fs');
+let tulind = require('tulind');
 
-let endpoint = 'https://api-public.sandbox.gdax.com';
-let device1 = 'BTC';
-let device2 = 'EUR';
-let product = device1+'-'+device2;
-let interval = 60*5;
+const Account = require('./Account.js');
+const ProductRates = require('./ProductRates.js');
+let config = require("./config.js");
 
-let eurWallet = 1000;
-let btcWallet = 0;
-let _stockPrices = [];
-let _macd = [];
-let state = 'WAIT';
+
+// Init accounts
+let baseCurrencyAccount = new Account(0, config.product.base_currency, 0, 0, 0);
+let quoteCurrencyAccount = new Account(0, config.product.quote_currency, 0, 0, 0);
+
+let productRates = [];
+
 let lastTime = null;
 let bestBid = 0;
 let bestAsk = 0;
+let previousSignal = 0;
 
-let publicClient = new Gdax.PublicClient(product);
-let authedClient = new Gdax.AuthenticatedClient('fd126a612be49446435b69aa9599d2bf', 'fMQZ8jfUE2f97K2of76zuKCnqX9gxj5EWZk8YLk1o+0kwM+6NSov34IJZgATsx2EU9cm3IW43w+ByVLy68+LYw==', 'eq3pksvqn46');
+let publicClient = new Gdax.PublicClient(config.product.id);
+let authedClient = new Gdax.AuthenticatedClient(config.api.key, config.api.secret, config.api.passphrase);
 
-class Account {
-    constructor(id, currency, balance, available, hold) {
-        this._id = id;
-        this._currency = currency;
-        this._balance = balance;
-        this._startingBalance = balance;
-        this._available = (available).toFixed(2);
-        this._hold = hold;
-    }
-
-    get id() {
-        return this._id;
-    }
-
-    set id(value) {
-        this._id = value;
-    }
-
-    get currency() {
-        return this._currency;
-    }
-
-    set currency(value) {
-        this._currency = value;
-    }
-
-    get balance() {
-        return this._balance;
-    }
-
-    set balance(value) {
-        this._balance = value;
-    }
-
-    get available() {
-        return this._available;
-    }
-
-    set available(value) {
-        this._available = value;
-    }
-
-    get hold() {
-        return this._hold;
-    }
-
-    set hold(value) {
-        this._hold = value;
-    }
-
-    get startingBalance() {
-        return this._startingBalance;
-    }
-
-    set startingBalance(value) {
-        return this._startingBalance = value;
-    }
-
-    update(id, currency, balance, available, hold) {
-        this._id = id;
-        this._currency = currency;
-        this._balance = balance;
-        this._available = available;
-        this._hold = hold;
-    }
-}
-
-let callback = function (err, response, data) {
+let tradeCallback = function (err, response, data) {
     data.reverse();
-    _stockPrices = [];
-    _macd = [];
-    let i = 0;
-    for (i = 0, len = data.length; i < len; i++) {
-        _stockPrices.push(data[i][4]);
-        // log((new Date(data[i][0] * 1000)).toLocaleString());
-        getSignal(true);
+
+    let times = [];
+    let lowPrices = [];
+    let highPrices = [];
+    let openPrices = [];
+    let closePrices = [];
+    let volumes = [];
+    for (let i = 0; i < data.length; i++) {
+        times.push(data[i][0]);
+        lowPrices.push(data[i][1]);
+        highPrices.push(data[i][2]);
+        openPrices.push(data[i][3]);
+        closePrices.push(data[i][4]);
+        volumes.push(data[i][5]);
+        productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
+        getSignal();
     }
-    i = i -1;
-    if (lastTime < data[i][0]) {
-        lastTime = data[i][0];
-        let date = (new Date(data[i][0] * 1000)).toLocaleString();
-        let text = date + '[low='+data[i][1]+']'+'[high='+data[i][2]+']'+'[open='+data[i][3]+']'+'[close='+data[i][4]+']';
+    productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
+    if (lastTime < times[times.length - 1]) {
+        lastTime = times[times.length - 1];
+        let date = (new Date(lastTime * 1000)).toLocaleString();
         let signal = getSignal();
-        if (signal == 'BUY' ) {
-            log(text + ': BUY');
-            buy((bestAsk*100 - 1)/100);
+        if (signal == 'BUY') {
+            log(date + ': BUY' );
+            buy((bestAsk * 100 - 1) / 100);
         } else if (signal == 'SELL') {
-            log(text + ': SELL');
-            sell((bestBid*100 + 1)/100);
+            log(date + ': SELL');
+            sell((bestBid * 100 + 1) / 100);
         } else {
-            log(text + ': WAIT');
+            log(date + ': WAIT');
         }
         if (signal == 'BUY' || signal == 'SELL') {
-            log(eurWallet.available + 'eur');
-            log(btcWallet.available + 'btc or ' + btcWallet.available * data[i][4] + 'eur');
+            log(quoteCurrencyAccount.available + 'eur');
+            log(baseCurrencyAccount.available + 'btc or ' + baseCurrencyAccount.available * bestAsk + 'eur');
         }
     }
 };
@@ -121,10 +64,10 @@ let callback = function (err, response, data) {
 let accountsCallback = function (err, response, data) {
 
     for (let account of data) {
-        if (account['currency'] == eurWallet.currency) {
-            eurWallet.update(account['id'],account['currency'],account['balance'],account['available'],account['hold']);
-        } else if (account['currency'] == btcWallet.currency) {
-            btcWallet.update(account['id'],account['currency'],account['balance'],account['available'],account['hold']);
+        if (account['currency'] == config.product.quote_currency) {
+            quoteCurrencyAccount.update(account['id'], account['currency'], account['balance'], account['available'], account['hold']);
+        } else if (account['currency'] == config.product.base_currency) {
+            baseCurrencyAccount.update(account['id'], account['currency'], account['balance'], account['available'], account['hold']);
         }
     }
 };
@@ -133,84 +76,60 @@ let orderCallback = function (err, response, data) {
     log(JSON.stringify(data));
 };
 
-function getSignal(saveState = false) {
-    let macd = MACD(12, 26);
-    _macd.push(macd);
-    let signalLine = exponentialMovingAverage(9, _macd);
-    let macdHistogram = macd - signalLine;
+function getSignal() {
+    let macd = 0;
+    let signal = 0;
+    let histogram = 0;
+    tulind.indicators.macd.indicator([productRates.closePrices], [12, 26, 9], function(err, results) {
+        macd = results[0][results[0].length-1];
+        signal = results[1][results[1].length-1];
+        histogram = results[2][results[2].length-1];
+    });
+    if (macd >= signal && previousSignal == 0) {
+        previousSignal = 1;
 
-    if (macd >= signalLine) {
-        if (state != 'BUY') {
-            if (saveState) {
-                state = 'BUY';
-            }
-
-            return 'BUY';
-        }
+        return 'BUY';
     }
-    else if (macd <= signalLine) {
-        if (state != 'SELL') {
-            if (saveState) {
-                state = 'SELL';
-            }
+    else if (macd <= signal && previousSignal == 1) {
+        previousSignal = 0;
 
-            return 'SELL';
-        }
+        return 'SELL';
     }
 
     return 'WAIT';
 }
 
-function buy(stockPrice) {
-    if (eurWallet.available > stockPrice * 0.01 && stockPrice > 0) {
+function buy(price) {
+    if (quoteCurrencyAccount.available > price * 0.01 && price > 0) {
         let params = {
-            'price': stockPrice,
-            'size': Math.floor(eurWallet.available/stockPrice * 10000)/10000,  // BTC
-            'product_id': product,
+            'price': price,
+            'size': Math.floor(quoteCurrencyAccount.available / stockPrice * 10000) / 10000,  // BTC
+            'product_id': config.product.id,
         };
         authedClient.buy(params, orderCallback);
-        // btcWallet.available = btcWallet.available + ( eurWallet.available / stockPrice);
-        // eurWallet.available = eurWallet.available - (eurWallet.available / stockPrice);
+        log((new Date()).toLocaleString() + ': Buy ' + params.size + ' for ' + params.price);
+
+        // baseCurrencyAccount.available = baseCurrencyAccount.available + ( quoteCurrencyAccount.available / stockPrice);
+        // quoteCurrencyAccount.available = quoteCurrencyAccount.available - (quoteCurrencyAccount.available / stockPrice);
     } else {
-        log('No money for buying.')
+        log((new Date()).toLocaleString() + ': No money for buying.');
     }
-    state = 'BUY';
 }
 
-function sell(stockPrice) {
-    if (btcWallet.available > 0.01 && stockPrice > 0) {
+function sell(price) {
+    if (baseCurrencyAccount.available > 0.01 && price > 0) {
         let params = {
-            'price': stockPrice,
-            'size': btcWallet.available,  // BTC
-            'product_id': product,
+            'price': price,
+            'size': baseCurrencyAccount.available,  // BTC
+            'product_id': config.product.id,
         };
         authedClient.sell(params, orderCallback);
-        // eurWallet.available = (eurWallet.startingBalance/stockPrice) * stockPrice;
-        // btcWallet.available = btcWallet.available - (eurWallet.startingBalance/stockPrice);
+        log((new Date()).toLocaleString() + ': Buy ' + params.size + ' for ' + params.price);
+        // quoteCurrencyAccount.available = (quoteCurrencyAccount.startingBalance/stockPrice) * stockPrice;
+        // baseCurrencyAccount.available = baseCurrencyAccount.available - (quoteCurrencyAccount.startingBalance/stockPrice);
     } else {
-        log('No bitcoin to sell.')
+        log((new Date()).toLocaleString() + ': No bitcoin to sell.')
     }
-    state = 'SELL';
-}
-
-function exponentialMovingAverage(days, stockPrices) {
-    let exponentialMovingAverage = 0;
-    let coeff = 0;
-    let i = stockPrices.length - days;
-
-    for (let n = 0; n < days; n++) {
-        exponentialMovingAverage += stockPrices[i++] * (n + 1);
-        coeff += (n + 1);
-    }
-    exponentialMovingAverage /= coeff;
-    return exponentialMovingAverage;
-}
-
-/**
- * @return {number}
- */
-function MACD(EMAShort, EMALong) {
-    return exponentialMovingAverage(EMAShort, _stockPrices) - exponentialMovingAverage(EMALong, _stockPrices);
 }
 
 function log(log) {
@@ -218,14 +137,10 @@ function log(log) {
     fs.appendFileSync('log.txt', log + '\n');
 }
 
-// Init accounts
-btcWallet = new Account(0, device1, 0, 0, 0);
-eurWallet = new Account(0, device2, 0, 0, 0);
-
 
 function trade() {
     authedClient.getAccounts(accountsCallback);
-    publicClient.getProductHistoricRates({'granularity': interval}, callback);
+    publicClient.getProductHistoricRates({'granularity': config.trade.interval}, tradeCallback);
 }
 
 function book() {
@@ -236,14 +151,11 @@ function book() {
         }
     });
 }
-
-
 book();
 trade();
-setInterval(function() {
+setInterval(function () {
     book();
     trade();
-    // buy((bestAsk*100 - 1)/100);
 }, 10000);
 
 

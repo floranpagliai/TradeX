@@ -8,5 +8,9 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "author": "Floran Pagliai",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "gdax": "^0.4.2",
+    "tulind": "^0.8.6"
+  }
 }
