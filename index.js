@@ -1,6 +1,7 @@
 let Gdax = require('gdax');
 let fs = require('fs');
 let tulind = require('tulind');
+let CronJob = require('cron').CronJob;
 
 const Account = require('./Account.js');
 const ProductRates = require('./ProductRates.js');
@@ -22,6 +23,13 @@ let publicClient = new Gdax.PublicClient(config.product.id);
 let authedClient = new Gdax.AuthenticatedClient(config.api.key, config.api.secret, config.api.passphrase);
 
 let tradeCallback = function (err, response, data) {
+    if (!data instanceof Array) {
+        log('[ERROR] tradeCallback data is not array');
+    }
+    if (typeof data[0] === 'undefined' || lastTime == data[0][0]) {
+        return null;
+    }
+    lastTime = data[0][0];
     data.reverse();
 
     let times = [];
@@ -41,33 +49,35 @@ let tradeCallback = function (err, response, data) {
         getSignal();
     }
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
-    if (lastTime < times[times.length - 1]) {
-        lastTime = times[times.length - 1];
-        let date = (new Date(lastTime * 1000)).toLocaleString('fr-fr');
-        let signal = getSignal();
-        if (signal == 'BUY') {
-            log(date + ': BUY' );
-            buy((bestAsk * 100 - 1) / 100);
-        } else if (signal == 'SELL') {
-            log(date + ': SELL');
-            sell((bestBid * 100 + 1) / 100);
-        } else {
-            log(date + ': WAIT');
-        }
-        if (signal == 'BUY' || signal == 'SELL') {
-            log(quoteCurrencyAccount.available + 'eur');
-            log(baseCurrencyAccount.available + 'btc or ' + baseCurrencyAccount.available * bestAsk + 'eur');
-        }
+
+    let tickDateStart = (new Date((lastTime-config.trade.interval) * 1000)).toLocaleString('fr-fr', { hour: "numeric", minute: "numeric" });
+    let tickDateEnd = (new Date(lastTime * 1000)).toLocaleString('fr-fr', { hour: "numeric", minute: "numeric" });
+
+    let signal = getSignal();
+    if (signal == 'BUY') {
+        log(tickDateStart + ' to ' + tickDateEnd + + ' BUY');
+        buy((bestAsk * 100 - 1) / 100);
+    } else if (signal == 'SELL') {
+        log(tickDateStart + ' to ' + tickDateEnd + ' SELL');
+        sell((bestBid * 100 + 1) / 100);
+    } else {
+        log(tickDateStart + ' to ' + tickDateEnd + ' WAIT');
+    }
+    if (signal == 'BUY' || signal == 'SELL') {
+        log(quoteCurrencyAccount.available + 'eur');
+        log(baseCurrencyAccount.available + 'btc or ' + baseCurrencyAccount.available * bestAsk + 'eur');
     }
 };
 
 let accountsCallback = function (err, response, data) {
-
-    for (let account of data) {
-        if (account['currency'] == config.product.quote_currency) {
-            quoteCurrencyAccount.update(account['id'], account['currency'], account['balance'], account['available'], account['hold']);
-        } else if (account['currency'] == config.product.base_currency) {
-            baseCurrencyAccount.update(account['id'], account['currency'], account['balance'], account['available'], account['hold']);
+    if (data instanceof Array) {
+        for (let account of data) {
+            if (account)
+                if (account['currency'] == config.product.quote_currency) {
+                    quoteCurrencyAccount.update(account['id'], account['currency'], account['balance'], account['available'], account['hold']);
+                } else if (account['currency'] == config.product.base_currency) {
+                    baseCurrencyAccount.update(account['id'], account['currency'], account['balance'], account['available'], account['hold']);
+                }
         }
     }
 };
@@ -80,12 +90,13 @@ function getSignal() {
     let macd = 0;
     let signal = 0;
     let histogram = 0;
-    tulind.indicators.macd.indicator([productRates.closePrices], [12, 26, 9], function(err, results) {
-        macd = results[0][results[0].length-1];
-        signal = results[1][results[1].length-1];
-        histogram = results[2][results[2].length-1];
+    tulind.indicators.macd.indicator([productRates.closePrices], [12, 26, 9], function (err, results) {
+        macd = results[0][results[0].length - 1];
+        signal = results[1][results[1].length - 1];
+        histogram = results[2][results[2].length - 1];
     });
     if (macd >= signal && previousSignal == 0) {
+        // TODO : check for same histogram size for 14 day
         previousSignal = 1;
 
         return 'BUY';
@@ -107,12 +118,12 @@ function buy(price) {
             'product_id': config.product.id,
         };
         authedClient.buy(params, orderCallback);
-        log((new Date()).toLocaleString('fr-fr') + ': Buy ' + params.size + ' for ' + params.price);
+        log('Buy ' + params.size + ' for ' + params.price);
 
         // baseCurrencyAccount.available = baseCurrencyAccount.available + ( quoteCurrencyAccount.available / stockPrice);
         // quoteCurrencyAccount.available = quoteCurrencyAccount.available - (quoteCurrencyAccount.available / stockPrice);
     } else {
-        log((new Date()).toLocaleString('fr-fr') + ': No money for buying.');
+        log('No money for buying.');
     }
 }
 
@@ -124,15 +135,16 @@ function sell(price) {
             'product_id': config.product.id,
         };
         authedClient.sell(params, orderCallback);
-        log((new Date()).toLocaleString('fr-fr') + ': Buy ' + params.size + ' for ' + params.price);
+        log('Buy ' + params.size + ' for ' + params.price);
         // quoteCurrencyAccount.available = (quoteCurrencyAccount.startingBalance/stockPrice) * stockPrice;
         // baseCurrencyAccount.available = baseCurrencyAccount.available - (quoteCurrencyAccount.startingBalance/stockPrice);
     } else {
-        log((new Date()).toLocaleString('fr-fr') + ': No bitcoin to sell.')
+        log('No bitcoin to sell.')
     }
 }
 
 function log(log) {
+    log = '[' + (new Date()).toLocaleString('fr-FR') +  '] ' + log;
     console.log(log);
     fs.appendFileSync('log.txt', log + '\n');
 }
@@ -145,26 +157,14 @@ function trade() {
 
 function book() {
     publicClient.getProductOrderBook({'level': 1}, function (err, response, data) {
-        if (typeof data['bids'][0][0] != 'undefined' && typeof data['asks'][0][0] != 'undefined') {
+        if (typeof data['bids'] != 'undefined' && typeof data['asks'] != 'undefined') {
             bestBid = parseFloat(data['bids'][0][0]); // device to buy
             bestAsk = parseFloat(data['asks'][0][0]);  // device to sell
         }
     });
 }
-book();
-trade();
-setInterval(function () {
+
+new CronJob('0 */1 * * * *', function () {
     book();
     trade();
-}, 10000);
-
-
-// publicClient.getProducts(function (err, response, data) {
-//     log(data);
-// });
-/**
- * Au lancement récup du capital dispo
- * Lors d'une action je génére un ordre liquide, si refusé je recupère la meilleure offre et j'en fait une meilleure.
- *
- * Pour les euros arrondir Math.floor(x*10)/10, pour les bitcoin Math.floor(x100000000)/100000000
- */
+}, null, true);

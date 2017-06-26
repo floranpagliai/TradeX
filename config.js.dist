@@ -1,9 +1,9 @@
 let config = {};
 
 config.api = {
-    key: 'fd126a612be49446435b69aa9599d2bf',
-    secret: 'fMQZ8jfUE2f97K2of76zuKCnqX9gxj5EWZk8YLk1o+0kwM+6NSov34IJZgATsx2EU9cm3IW43w+ByVLy68+LYw==',
-    passphrase: 'eq3pksvqn46',
+    key: 'api_key',
+    secret: 'api_secret',
+    passphrase: 'api_passphrase',
 };
 
 config.product = {
@@ -18,5 +18,4 @@ config.product = {
 config.trade = {
     interval: 3600 // 1h
 };
-
 module.exports = config;

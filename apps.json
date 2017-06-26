@@ -1,0 +1,12 @@
+{
+  "apps": [
+    {
+      "name": "robot-btv",
+      "script": "./index.js config-btc.js"
+    },
+    {
+      "name": "robot-eth",
+      "script": "./index.js config-eth.js"
+    }
+  ]
+}
