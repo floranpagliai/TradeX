@@ -1,12 +1,12 @@
 {
   "apps": [
     {
-      "name": "robot-btv",
-      "script": "./index.js config-btc.js"
+      "name": "trader",
+      "script": "./trader.js"
     },
     {
-      "name": "robot-eth",
-      "script": "./index.js config-eth.js"
+      "name": "price-wide-lister",
+      "script": "./priceWideListener.js"
     }
   ]
 }

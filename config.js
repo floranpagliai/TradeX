@@ -16,7 +16,10 @@ config.product = {
 };
 
 config.trade = {
-    interval: 3600 // 1h
+    interval: 3600, // 1h
+    macd: {
+        histogram_strength_requirement: 8
+    }
 };
 
 module.exports = config;

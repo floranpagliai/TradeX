@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "cron": "^1.2.1",
+    "dateformat": "^2.0.0",
     "gdax": "^0.4.2",
     "tulind": "^0.8.6"
   }
