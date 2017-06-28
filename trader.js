@@ -139,12 +139,13 @@ function buy(price) {
     if (quoteCurrencyAccount.available > price * 0.01 && price > 0) {
         let params = {
             'price': price,
-            'size': Math.floor(quoteCurrencyAccount.available / stockPrice * 10000) / 10000,  // BTC
+            'size': Math.floor(quoteCurrencyAccount.available / price * 10000) / 10000,  // BTC
             'product_id': config.product.id,
         };
-        authedClient.buy(params, orderCallback);
+        // authedClient.buy(params, orderCallback);
         logger.log('Buy ' + params.size + ' for ' + params.price);
         // TODO: make a stop sell with price minus 2% or 5%
+        console.log('Stop order at 2%=' + (params.price - params.price * 0.02).toFixed(2) + ' and 5%=' + (params.price - params.price * 0.05).toFixed(2));
 
         // baseCurrencyAccount.available = baseCurrencyAccount.available + ( quoteCurrencyAccount.available / stockPrice);
         // quoteCurrencyAccount.available = quoteCurrencyAccount.available - (quoteCurrencyAccount.available / stockPrice);
