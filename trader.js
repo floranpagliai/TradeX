@@ -24,7 +24,7 @@ let authedClient = new Gdax.AuthenticatedClient(config.api.key, config.api.secre
 
 let tradeCallback = function (err, response, data) {
     if (!data instanceof Array) {
-        log('[ERROR] tradeCallback data is not array');
+        logger.log('[ERROR] tradeCallback data is not array');
     }
     if (typeof data[0] === 'undefined' || lastTime == data[0][0]) {
         return null;
@@ -105,14 +105,14 @@ function getSignal() {
 
     if (macd > signal && macdBefore < signalBefore) {
         let strength = getHistogramStrength(histogramValues, false);
-        if (strength >= config.trade.macd.histogram_strength_requirement) {
+        if (strength >= config.trade.macd.histogram_buy) {
 
             return 'BUY';
         }
     }
     else if (macd < signal && macdBefore > signalBefore) {
         let strength = getHistogramStrength(histogramValues, true);
-        if (strength >= config.trade.macd.histogram_strength_requirement) {
+        if (strength >= config.trade.macd.histogram_sell) {
 
             return 'SELL';
         }
@@ -143,7 +143,7 @@ function buy(price) {
             'product_id': config.product.id,
         };
         authedClient.buy(params, orderCallback);
-        logger.log('Buy ' + params.size + ' for ' + params.price);
+        logger.log('Buy ' + params.size + ' at ' + params.price);
         // TODO: make a stop sell with price minus 2% or 5%
         console.log('Stop order at 2%=' + (params.price - params.price * 0.02).toFixed(2) + ' and 5%=' + (params.price - params.price * 0.05).toFixed(2));
 
@@ -162,7 +162,7 @@ function sell(price) {
             'product_id': config.product.id,
         };
         authedClient.sell(params, orderCallback);
-        logger.log('Buy ' + params.size + ' for ' + params.price);
+        logger.log('Buy ' + params.size + ' at ' + params.price);
         // quoteCurrencyAccount.available = (quoteCurrencyAccount.startingBalance/stockPrice) * stockPrice;
         // baseCurrencyAccount.available = baseCurrencyAccount.available - (quoteCurrencyAccount.startingBalance/stockPrice);
     } else {

@@ -3,10 +3,6 @@
     {
       "name": "trader",
       "script": "./trader.js"
-    },
-    {
-      "name": "price-wide-lister",
-      "script": "./priceWideListener.js"
     }
   ]
 }

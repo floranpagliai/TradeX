@@ -18,7 +18,8 @@ config.product = {
 config.trade = {
     interval: 3600, // 1h
     macd: {
-        histogram_strength_requirement: 8
+        histogram_buy: 0,
+        histogram_sell: 7
     }
 };
 
