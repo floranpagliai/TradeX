@@ -10,16 +10,16 @@ config.product = {
     id: 'BTC-EUR',
     base_currency: "BTC",
     quote_currency: "EUR",
-    base_min_size: "0.01",
-    base_max_size: "10000.00",
-    quote_increment: "0.01"
+    base_min_size: 0.01,
+    base_max_size: 250,
+    quote_increment: 0.01
 };
 
 config.trade = {
-    interval: 3600, // 1h
+    interval: 60*5,
     macd: {
-        histogram_buy: 0,
-        histogram_sell: 7
+        histogram_buy: 7,
+        histogram_sell: 0
     }
 };
 

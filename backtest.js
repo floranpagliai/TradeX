@@ -108,7 +108,7 @@ function buy(price) {
             'product_id': config.product.id,
         };
         logger.log('Buy ' + params.size + ' at ' + params.price);
-        // TODO: make a stop sell with price minus 2% or 5%
+        // TODO: make a stop sell with price minus 3%
         baseCurrencyAccount.available += params.size;
         quoteCurrencyAccount.available -= params.size * price;
     } else {
@@ -123,7 +123,7 @@ function sell(price) {
             'size': baseCurrencyAccount.available,  // BTC
             'product_id': config.product.id,
         };
-        logger.log('Buy ' + params.size + ' at ' + params.price);
+        logger.log('Sell ' + params.size + ' at ' + params.price);
         quoteCurrencyAccount.available += params.size * price;
         baseCurrencyAccount.available -= params.size;
     } else {

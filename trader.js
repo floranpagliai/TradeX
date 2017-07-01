@@ -18,6 +18,7 @@ let productRates = [];
 let lastTime = null;
 let bestBid = 0;
 let bestAsk = 0;
+let lastOrderId = null;
 
 let publicClient = new Gdax.PublicClient(config.product.id);
 let authedClient = new Gdax.AuthenticatedClient(config.api.key, config.api.secret, config.api.passphrase);
@@ -75,15 +76,20 @@ let accountsCallback = function (err, response, data) {
         for (let account of data) {
             if (account)
                 if (account['currency'] == config.product.quote_currency) {
-                    quoteCurrencyAccount.update(account['id'], account['currency'], account['balance'], account['available'], account['hold']);
+                    quoteCurrencyAccount.update(account['balance'], account['available'], account['hold']);
                 } else if (account['currency'] == config.product.base_currency) {
-                    baseCurrencyAccount.update(account['id'], account['currency'], account['balance'], account['available'], account['hold']);
+                    baseCurrencyAccount.update(account['balance'], account['available'], account['hold']);
                 }
         }
     }
 };
 
 let orderCallback = function (err, response, data) {
+    if (data['side'] == 'buy') {
+        lastOrderId = data['id'];
+    } else {
+        lastOrderId = null;
+    }
     logger.log(JSON.stringify(data));
 };
 
@@ -136,7 +142,7 @@ function getHistogramStrength(histogramValues, checkPositive) {
 }
 
 function buy(price) {
-    if (quoteCurrencyAccount.available > price * 0.01 && price > 0) {
+    if (quoteCurrencyAccount.available > price * config.product.base_min_size && price > 0) {
         let params = {
             'price': price,
             'size': Math.floor(quoteCurrencyAccount.available / price * 10000) / 10000,  // BTC
@@ -144,27 +150,23 @@ function buy(price) {
         };
         authedClient.buy(params, orderCallback);
         logger.log('Buy ' + params.size + ' at ' + params.price);
-        // TODO: make a stop sell with price minus 2% or 5%
-        console.log('Stop order at 2%=' + (params.price - params.price * 0.02).toFixed(2) + ' and 5%=' + (params.price - params.price * 0.05).toFixed(2));
-
-        // baseCurrencyAccount.available = baseCurrencyAccount.available + ( quoteCurrencyAccount.available / stockPrice);
-        // quoteCurrencyAccount.available = quoteCurrencyAccount.available - (quoteCurrencyAccount.available / stockPrice);
     } else {
         logger.log('No money for buying.');
     }
 }
 
 function sell(price) {
-    if (baseCurrencyAccount.available > 0.01 && price > 0) {
+    if (baseCurrencyAccount.available > config.product.base_min_size && price > 0) {
         let params = {
             'price': price,
             'size': baseCurrencyAccount.available,  // BTC
             'product_id': config.product.id,
         };
+        authedClient.cancelAllOrders({product_id: config.product.id}, function (err, response, data) {
+            logger.log(data);
+        });
         authedClient.sell(params, orderCallback);
-        logger.log('Buy ' + params.size + ' at ' + params.price);
-        // quoteCurrencyAccount.available = (quoteCurrencyAccount.startingBalance/stockPrice) * stockPrice;
-        // baseCurrencyAccount.available = baseCurrencyAccount.available - (quoteCurrencyAccount.startingBalance/stockPrice);
+        logger.log('Sell ' + params.size + ' at ' + params.price);
     } else {
         logger.log('No bitcoin to sell.')
     }
@@ -187,4 +189,19 @@ function book() {
 new CronJob('0 */1 * * * *', function () {
     book();
     trade();
+    if (lastOrderId !== null) {
+        authedClient.getOrder(lastOrderId, function (err, response, data) {
+            if (data['done']) {
+                let price = (data['price'] - data['price'] * 0.05).toFixed(2);
+                let params = {
+                    'type': 'stop',
+                    'price': price,
+                    'size': data['size'],
+                    'product_id': config.product.id,
+                };
+                authedClient.sell(params, orderCallback);
+                logger.log('Stop order at ' + params.price);
+            }
+        });
+    }
 }, null, true);

@@ -56,9 +56,7 @@ class Account {
         return this._startingBalance = value;
     }
 
-    update(id, currency, balance, available, hold) {
-        this._id = id;
-        this._currency = currency;
+    update(balance, available, hold) {
         this._balance = balance;
         this._available = available;
         this._hold = hold;
