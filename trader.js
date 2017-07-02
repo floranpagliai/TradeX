@@ -19,6 +19,7 @@ let lastTime = null;
 let bestBid = 0;
 let bestAsk = 0;
 let lastOrderId = null;
+let trailingLossId = null;
 
 let publicClient = new Gdax.PublicClient(config.product.id);
 let authedClient = new Gdax.AuthenticatedClient(config.api.key, config.api.secret, config.api.passphrase);
@@ -51,7 +52,6 @@ let tradeCallback = function (err, response, data) {
         // console.log((new Date(data[i][0] * 1000)).toLocaleString('fr-fr') + ' ' + getSignal());
     }
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
-
     let tickDateStart = dateFormat(new Date((lastTime - config.trade.interval) * 1000), "HH:MM");
     let tickDateEnd = dateFormat(new Date(lastTime * 1000), "HH:MM");
 
@@ -186,22 +186,55 @@ function book() {
     });
 }
 
+function adjustTrailingLoss(id) {
+    authedClient.cancelOrder(id, function () {
+        let price = bestAsk;
+        tulind.indicators.atr.indicator([productRates.highPrices,productRates.lowPrices,productRates.closePrices], [14], function (err, results) {
+             price -= results[0][results[0].length - 1];
+        });
+        let params = {
+            'type': 'stop',
+            'price': price.toFixed(2),
+            'size': baseCurrencyAccount.available,  // BTC
+            'product_id': config.product.id,
+        };
+        authedClient.sell(params, function (err, response, data) {
+            trailingLossId = data['id'];
+        });
+        logger.log('Stop order at ' + params.price);
+    });
+
+}
+
+authedClient.getOrders(function (err, response, data) {
+   console.log(data);
+});
+
 new CronJob('0 */1 * * * *', function () {
     book();
     trade();
     if (lastOrderId !== null) {
         authedClient.getOrder(lastOrderId, function (err, response, data) {
-            if (data['done']) {
-                let price = (data['price'] - data['price'] * 0.05).toFixed(2);
+            if (data['status'] == 'done') {
+                let price = data['price'];
+                tulind.indicators.atr.indicator([productRates.highPrices,productRates.lowPrices,productRates.closePrices], [14], function (err, results) {
+                    price -= results[0][results[0].length - 1];
+                });
                 let params = {
                     'type': 'stop',
-                    'price': price,
+                    'price': price.toFixed(2),
                     'size': data['size'],
                     'product_id': config.product.id,
                 };
-                authedClient.sell(params, orderCallback);
+                authedClient.sell(params, function (err, response, data) {
+                    trailingLossId = data['id'];
+                });
+                lastOrderId = null;
                 logger.log('Stop order at ' + params.price);
             }
         });
+    }
+    if (trailingLossId !== null) {
+        adjustTrailingLoss(trailingLossId);
     }
 }, null, true);
