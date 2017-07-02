@@ -7,6 +7,7 @@ class ProductRates {
         this._closePrices = closePrices;
         this._volumes = volumes;
         this._closePrices = closePrices;
+        this._lastTime = times[times.length - 1];
     }
 
 
@@ -56,6 +57,14 @@ class ProductRates {
 
     set volumes(value) {
         this._volumes = value;
+    }
+
+    get lastTime() {
+        return this._lastTime;
+    }
+
+    set lastTime(value) {
+        this._lastTime = value;
     }
 }
 

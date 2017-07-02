@@ -19,7 +19,7 @@ config.trade = {
     interval: 60*5,
     macd: {
         histogram_buy: 7,
-        histogram_sell: 0
+        histogram_sell: 2
     }
 };
 

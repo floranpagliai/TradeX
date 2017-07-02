@@ -3,7 +3,6 @@ class Account {
         this._id = id;
         this._currency = currency;
         this._balance = balance;
-        this._startingBalance = balance;
         this._available = available;
         this._hold = hold;
     }
@@ -46,14 +45,6 @@ class Account {
 
     set hold(value) {
         this._hold = value;
-    }
-
-    get startingBalance() {
-        return this._startingBalance;
-    }
-
-    set startingBalance(value) {
-        return this._startingBalance = value;
     }
 
     update(balance, available, hold) {

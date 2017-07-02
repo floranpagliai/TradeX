@@ -6,6 +6,7 @@ let logger = require('./Logger.js');
 
 const Account = require('./Account.js');
 const ProductRates = require('./ProductRates.js');
+const Trade = require('./Trade.js');
 let config = require("./config.js");
 
 
@@ -14,26 +15,30 @@ let baseCurrencyAccount = new Account(0, config.product.base_currency, 0, 0, 0);
 let quoteCurrencyAccount = new Account(0, config.product.quote_currency, 0, 0, 0);
 
 let productRates = [];
-
 let lastTime = null;
 let bestBid = 0;
 let bestAsk = 0;
-let lastOrderId = null;
-let trailingLossId = null;
+let activeTrade = null;
 
 let publicClient = new Gdax.PublicClient(config.product.id);
 let authedClient = new Gdax.AuthenticatedClient(config.api.key, config.api.secret, config.api.passphrase);
 
-let tradeCallback = function (err, response, data) {
+
+let orderBookCallback = function (err, response, data) {
+    if (typeof data['bids'] != 'undefined' && typeof data['asks'] != 'undefined') {
+        bestBid = parseFloat(data['bids'][0][0]); // device to buy
+        bestAsk = parseFloat(data['asks'][0][0]);  // device to sell
+    }
+};
+
+let historicRatesCallback = function (err, response, data) {
     if (!data instanceof Array) {
         logger.log('[ERROR] tradeCallback data is not array');
     }
-    if (typeof data[0] === 'undefined' || lastTime == data[0][0]) {
+    if (typeof data[0] === 'undefined' || productRates.lastTime == data[0][0]) {
         return null;
     }
-    lastTime = data[0][0];
     data.reverse();
-
     let times = [];
     let lowPrices = [];
     let highPrices = [];
@@ -49,26 +54,8 @@ let tradeCallback = function (err, response, data) {
         volumes.push(data[i][5]);
         productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
         getSignal();
-        // console.log((new Date(data[i][0] * 1000)).toLocaleString('fr-fr') + ' ' + getSignal());
     }
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
-    let tickDateStart = dateFormat(new Date((lastTime - config.trade.interval) * 1000), "HH:MM");
-    let tickDateEnd = dateFormat(new Date(lastTime * 1000), "HH:MM");
-
-    let signal = getSignal();
-    if (signal == 'BUY') {
-        logger.log(tickDateStart + ' to ' + tickDateEnd + ' BUY');
-        buy((bestAsk - 0.01).toFixed(2));
-    } else if (signal == 'SELL') {
-        logger.log(tickDateStart + ' to ' + tickDateEnd + ' SELL');
-        sell((bestBid + 0.01).toFixed(2));
-    } else {
-        logger.log(tickDateStart + ' to ' + tickDateEnd + ' WAIT');
-    }
-    if (signal == 'BUY' || signal == 'SELL') {
-        logger.log(quoteCurrencyAccount.available + 'eur');
-        logger.log(baseCurrencyAccount.available + 'btc or ' + baseCurrencyAccount.available * bestAsk + 'eur');
-    }
 };
 
 let accountsCallback = function (err, response, data) {
@@ -82,15 +69,6 @@ let accountsCallback = function (err, response, data) {
                 }
         }
     }
-};
-
-let orderCallback = function (err, response, data) {
-    if (data['side'] == 'buy') {
-        lastOrderId = data['id'];
-    } else {
-        lastOrderId = null;
-    }
-    logger.log(JSON.stringify(data));
 };
 
 function getSignal() {
@@ -148,7 +126,11 @@ function buy(price) {
             'size': Math.floor(quoteCurrencyAccount.available / price * 100) / 100,  // BTC
             'product_id': config.product.id,
         };
-        authedClient.buy(params, orderCallback);
+        authedClient.buy(params, function (err, response, data) {
+            if (typeof data['id'] !== 'undefined') {
+                activeTrade = new Trade(params.product_id, data['id'], 'buy', params.size, params.price);
+            }
+        });
         logger.log('Buy ' + params.size + ' at ' + params.price);
     } else {
         logger.log('No money for buying.');
@@ -162,10 +144,9 @@ function sell(price) {
             'size': baseCurrencyAccount.available,  // BTC
             'product_id': config.product.id,
         };
-        authedClient.cancelAllOrders({product_id: config.product.id}, function (err, response, data) {
-            logger.log(data);
+        authedClient.sell(params, function (err, response, data) {
+
         });
-        authedClient.sell(params, orderCallback);
         logger.log('Sell ' + params.size + ' at ' + params.price);
     } else {
         logger.log('No bitcoin to sell.')
@@ -173,68 +154,46 @@ function sell(price) {
 }
 
 function trade() {
+    if (productRates.lastTime == lastTime) {
+        return null;
+    }
+    let tickDateStart = dateFormat(new Date((lastTime - config.trade.interval) * 1000), "HH:MM");
+    let tickDateEnd = dateFormat(new Date(lastTime * 1000), "HH:MM");
+    let signal = getSignal();
+    if (signal == 'BUY') {
+        logger.log(tickDateStart + ' to ' + tickDateEnd + ' BUY');
+        buy((bestAsk - 0.01).toFixed(2));
+    } else if (signal == 'SELL') {
+        logger.log(tickDateStart + ' to ' + tickDateEnd + ' SELL');
+        sell((bestBid + 0.01).toFixed(2));
+    } else {
+        logger.log(tickDateStart + ' to ' + tickDateEnd + ' WAIT');
+    }
+    if (signal == 'BUY' || signal == 'SELL') {
+        logger.log(quoteCurrencyAccount.available + 'eur');
+        logger.log(baseCurrencyAccount.available + 'btc or ' + baseCurrencyAccount.available * bestAsk + 'eur');
+    }
+}
+
+new CronJob('*/15 * * * * *', function () {
     authedClient.getAccounts(accountsCallback);
-    publicClient.getProductHistoricRates({'granularity': config.trade.interval}, tradeCallback);
-}
-
-function book() {
-    publicClient.getProductOrderBook({'level': 1}, function (err, response, data) {
-        if (typeof data['bids'] != 'undefined' && typeof data['asks'] != 'undefined') {
-            bestBid = parseFloat(data['bids'][0][0]); // device to buy
-            bestAsk = parseFloat(data['asks'][0][0]);  // device to sell
-        }
-    });
-}
-
-function adjustTrailingLoss(id) {
-    authedClient.cancelOrder(id, function () {
-        let price = bestAsk;
-        tulind.indicators.atr.indicator([productRates.highPrices,productRates.lowPrices,productRates.closePrices], [14], function (err, results) {
-             price -= results[0][results[0].length - 1];
-        });
-        let params = {
-            'type': 'stop',
-            'price': price.toFixed(2),
-            'size': baseCurrencyAccount.available,  // BTC
-            'product_id': config.product.id,
-        };
-        authedClient.sell(params, function (err, response, data) {
-            trailingLossId = data['id'];
-        });
-        logger.log('Stop order at ' + params.price);
-    });
-
-}
-
-authedClient.getOrders(function (err, response, data) {
-   console.log(data);
-});
+    publicClient.getProductOrderBook({'level': 1}, orderBookCallback);
+    publicClient.getProductHistoricRates({'granularity': config.trade.interval}, historicRatesCallback);
+}, null, true);
 
 new CronJob('0 */1 * * * *', function () {
-    book();
     trade();
-    if (lastOrderId !== null) {
-        authedClient.getOrder(lastOrderId, function (err, response, data) {
-            if (data['status'] == 'done') {
-                let price = data['price'];
-                tulind.indicators.atr.indicator([productRates.highPrices,productRates.lowPrices,productRates.closePrices], [14], function (err, results) {
-                    price -= results[0][results[0].length - 1];
-                });
-                let params = {
-                    'type': 'stop',
-                    'price': price.toFixed(2),
-                    'size': data['size'],
-                    'product_id': config.product.id,
-                };
-                authedClient.sell(params, function (err, response, data) {
-                    trailingLossId = data['id'];
-                });
-                lastOrderId = null;
-                logger.log('Stop order at ' + params.price);
-            }
+    if (activeTrade !== null) {
+        let averageRange = 0;
+        tulind.indicators.atr.indicator([productRates.highPrices, productRates.lowPrices, productRates.closePrices], [14], function (err, results) {
+            averageRange = results[0][results[0].length - 1];
         });
-    }
-    if (trailingLossId !== null) {
-        adjustTrailingLoss(trailingLossId);
+        if (activeTrade.side == 'buy' && activeTrade.startingPrice - averageRange > bestAsk) {
+            console.log('Activate buy stop loss ' + activeTrade.startingPrice - averageRange);
+            activeTrade = null;
+        } else if (activeTrade.side == 'sell' && activeTrade.startingPrice + averageRange < bestBid) {
+            console.log('Activate sell stop loss ' + activeTrade.startingPrice + averageRange);
+            activeTrade = null;
+        }
     }
 }, null, true);
