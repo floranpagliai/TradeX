@@ -56,6 +56,7 @@ let historicRatesCallback = function (err, response, data) {
         getSignal();
     }
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
+    trade();
 };
 
 let accountsCallback = function (err, response, data) {
@@ -128,6 +129,7 @@ function buy(price) {
         };
         authedClient.buy(params, function (err, response, data) {
             if (typeof data['id'] !== 'undefined') {
+                // TODO : use websocket to create trade
                 activeTrade = new Trade(params.product_id, data['id'], 'buy', params.size, params.price);
             }
         });
@@ -183,16 +185,15 @@ new CronJob('*/15 * * * * *', function () {
 }, null, true);
 
 new CronJob('0 */1 * * * *', function () {
-    trade();
     if (activeTrade !== null) {
         let averageRange = 0;
         tulind.indicators.atr.indicator([productRates.highPrices, productRates.lowPrices, productRates.closePrices], [14], function (err, results) {
             averageRange = results[0][results[0].length - 1];
         });
-        if (activeTrade.side == 'buy' && activeTrade.startingPrice - averageRange > bestAsk) {
+        if (activeTrade.side == 'buy' && activeTrade.startingPrice - averageRange > productRates.lastLowPrice) {
             console.log('Activate buy stop loss ' + activeTrade.startingPrice - averageRange);
             activeTrade = null;
-        } else if (activeTrade.side == 'sell' && activeTrade.startingPrice + averageRange < bestBid) {
+        } else if (activeTrade.side == 'sell' && activeTrade.startingPrice + averageRange < productRates.lastHighPrice) {
             console.log('Activate sell stop loss ' + activeTrade.startingPrice + averageRange);
             activeTrade = null;
         }

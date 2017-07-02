@@ -66,6 +66,14 @@ class ProductRates {
     set lastTime(value) {
         this._lastTime = value;
     }
+
+    get lastLowPrice() {
+        return this._lowPrices[this._lowPrices.length - 1];
+    }
+
+    get lastHighPrice() {
+        return this._highPrices[this._highPrices.length - 1];
+    }
 }
 
 module.exports = ProductRates;
