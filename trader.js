@@ -155,7 +155,7 @@ function sell(price) {
 }
 
 function trade() {
-    if (lastTime >= productRates.lastTime) {
+    if (lastTime >= productRates.lastTime || typeof productRates.lastTime === 'undefined') {
         return null;
     }
     lastTime = productRates.lastTime;
