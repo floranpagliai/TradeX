@@ -145,7 +145,7 @@ function buy(price) {
     if (quoteCurrencyAccount.available > price * config.product.base_min_size && price > 0) {
         let params = {
             'price': price,
-            'size': Math.floor(quoteCurrencyAccount.available / price * 10000) / 10000,  // BTC
+            'size': Math.floor(quoteCurrencyAccount.available / price * 100) / 100,  // BTC
             'product_id': config.product.id,
         };
         authedClient.buy(params, orderCallback);
