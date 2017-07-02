@@ -35,7 +35,7 @@ let historicRatesCallback = function (err, response, data) {
     if (!data instanceof Array) {
         logger.log('[ERROR] tradeCallback data is not array');
     }
-    if (typeof data[0] === 'undefined' || productRates.lastTime == data[0][0]) {
+    if (typeof data[0] === 'undefined' || productRates.lastTime >= data[0][0]) {
         return null;
     }
     data.reverse();
@@ -56,7 +56,6 @@ let historicRatesCallback = function (err, response, data) {
         getSignal();
     }
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
-    trade();
 };
 
 let accountsCallback = function (err, response, data) {
@@ -129,7 +128,7 @@ function buy(price) {
         };
         authedClient.buy(params, function (err, response, data) {
             if (typeof data['id'] !== 'undefined') {
-                // TODO : use websocket to create trade
+                // TODO : use web
                 activeTrade = new Trade(params.product_id, data['id'], 'buy', params.size, params.price);
             }
         });
@@ -156,7 +155,7 @@ function sell(price) {
 }
 
 function trade() {
-    if (productRates.lastTime == lastTime) {
+    if (lastTime >= productRates.lastTime) {
         return null;
     }
     lastTime = productRates.lastTime;
@@ -184,7 +183,8 @@ new CronJob('*/15 * * * * *', function () {
     publicClient.getProductHistoricRates({'granularity': config.trade.interval}, historicRatesCallback);
 }, null, true);
 
-new CronJob('0 */1 * * * *', function () {
+new CronJob('*/5 * * * * *', function () {
+    trade();
     if (activeTrade !== null) {
         let averageRange = 0;
         tulind.indicators.atr.indicator([productRates.highPrices, productRates.lowPrices, productRates.closePrices], [14], function (err, results) {
