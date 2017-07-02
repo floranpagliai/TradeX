@@ -157,6 +157,7 @@ function trade() {
     if (productRates.lastTime == lastTime) {
         return null;
     }
+    lastTime = productRates.lastTime;
     let tickDateStart = dateFormat(new Date((lastTime - config.trade.interval) * 1000), "HH:MM");
     let tickDateEnd = dateFormat(new Date(lastTime * 1000), "HH:MM");
     let signal = getSignal();
