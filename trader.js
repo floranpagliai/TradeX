@@ -18,6 +18,7 @@ let productRates = [];
 let lastTime = null;
 let bestBid = 0;
 let bestAsk = 0;
+let spread = 0;
 let activeTrade = null;
 
 let publicClient = new Gdax.PublicClient(config.product.id);
@@ -25,8 +26,9 @@ let authedClient = new Gdax.AuthenticatedClient(config.api.key, config.api.secre
 
 let orderBookCallback = function (err, response, data) {
     if (typeof data['bids'] != 'undefined' && typeof data['asks'] != 'undefined') {
-        bestBid = parseFloat(data['bids'][0][0]); // device to buy (red)
-        bestAsk = parseFloat(data['asks'][0][0]);  // device to sell (green)
+        bestAsk = parseFloat(data['asks'][0][0]);  // device to sell (red)
+        bestBid = parseFloat(data['bids'][0][0]); // device to buy (green)
+        spread = bestAsk - bestBid;
     }
 };
 
@@ -152,10 +154,10 @@ function trade() {
     let signal = getSignal();
     if (signal == 'BUY') {
         logger.log(tickDateStart + ' to ' + tickDateEnd + ' BUY');
-        buy((bestAsk - 0.01).toFixed(2));
+        buy((bestAsk - spread + 0.01).toFixed(2));
     } else if (signal == 'SELL') {
         logger.log(tickDateStart + ' to ' + tickDateEnd + ' SELL');
-        sell((bestBid + 0.01).toFixed(2));
+        sell((bestBid + spread - 0.01).toFixed(2));
     } else {
         logger.log(tickDateStart + ' to ' + tickDateEnd + ' WAIT');
     }
