@@ -123,6 +123,7 @@ function buy(price) {
             'cancel_after': 'hour'
         };
         authedClient.buy(params, function (err, response, data) {
+            logger.log(data);
             if (typeof data['id'] !== 'undefined') {
                 logger.log(data['id']);
                 // TODO : use web to track when order is filled and create trade
@@ -144,7 +145,7 @@ function sell(price) {
             'product_id': config.product.id,
         };
         authedClient.sell(params, function (err, response, data) {
-
+            logger.log(data);
         });
         logger.log('Sell ' + params.size + ' at ' + params.price);
     } else {
@@ -187,6 +188,7 @@ new CronJob('*/5 * * * * *', function () {
                 logger.log('Activate buy stop loss ' + activeTrade.trailingLoss);
                 sell(getBestSellingPrice());
                 activeTrade = null;
+                // TODO : closing long trade function
             }
             if (activeTrade.trailingLoss < productRates.lastLowPrice - averageRange) {
                 activeTrade.trailingLoss = productRates.lastLowPrice - averageRange;
@@ -194,7 +196,7 @@ new CronJob('*/5 * * * * *', function () {
         } else if (activeTrade.side == 'sell') {
             if (activeTrade.trailingLoss !== null && bestAsk > activeTrade.trailingLoss) {
                 logger.log('Activate sell stop loss ' + activeTrade.trailingLoss);
-                // TODO ; buy
+                // TODO ; closing short trade function
             }
             if (activeTrade.trailingLoss > productRates.lastHighPrice + averageRange) {
                 activeTrade.trailingLoss = productRates.lastHighPrice + averageRange;
