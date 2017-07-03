@@ -12,6 +12,8 @@
   "dependencies": {
     "cron": "^1.2.1",
     "dateformat": "^2.0.0",
+    "ejs": "^2.5.6",
+    "express": "^4.15.3",
     "gdax": "^0.4.2",
     "tulind": "^0.8.6"
   }
