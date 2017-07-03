@@ -18,8 +18,13 @@ config.product = {
 config.trade = {
     interval: 60*5,
     macd: {
-        histogram_buy: 7,
-        histogram_sell: 2
+        thresholds: {
+            down: -0.025,
+            up: 0.025,
+            // How many candle intervals should a trend persist
+            // before we consider it real?
+            persistence: 1
+        }
     }
 };
 

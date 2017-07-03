@@ -52,10 +52,9 @@ let historicRatesCallback = function (err, response, data) {
         openPrices.push(data[i][3]);
         closePrices.push(data[i][4]);
         volumes.push(data[i][5]);
-        productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
-        getSignal();
     }
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
+    trade();
 };
 
 let accountsCallback = function (err, response, data) {
@@ -72,31 +71,23 @@ let accountsCallback = function (err, response, data) {
 };
 
 function getSignal() {
-    let macd = 0;
-    let signal = 0;
     let histogram = 0;
-    let macdBefore = 0;
-    let signalBefore = 0;
+    let histogramBefore = 0;
     let histogramValues = [];
     tulind.indicators.macd.indicator([productRates.closePrices], [12, 26, 9], function (err, results) {
-        macd = results[0][results[0].length - 1];
-        signal = results[1][results[1].length - 1];
         histogram = results[2][results[2].length - 1];
-        macdBefore = results[0][results[0].length - 2];
-        signalBefore = results[1][results[1].length - 2];
+        histogramBefore = results[2][results[2].length - 2];
         histogramValues = results[2].reverse();
     });
-
-    if (macd > signal && macdBefore < signalBefore) {
-        let strength = getHistogramStrength(histogramValues, false);
-        if (strength >= config.trade.macd.histogram_buy) {
+    if (histogram > config.trade.macd.thresholds.up && histogramBefore < config.trade.macd.thresholds.up) {
+        let persistence = getHistogramPersistence(histogramValues, false);
+        if (persistence >= config.trade.macd.thresholds.persistence) {
 
             return 'BUY';
         }
-    }
-    else if (macd < signal && macdBefore > signalBefore) {
-        let strength = getHistogramStrength(histogramValues, true);
-        if (strength >= config.trade.macd.histogram_sell) {
+    }  else if (histogram < config.trade.macd.thresholds.down && histogramBefore > config.trade.macd.thresholds.down) {
+        let persistence = getHistogramPersistence(histogramValues, true);
+        if (persistence >= config.trade.macd.thresholds.persistence) {
 
             return 'SELL';
         }
@@ -105,18 +96,18 @@ function getSignal() {
     return 'WAIT';
 }
 
-function getHistogramStrength(histogramValues, checkPositive) {
-    let strength = 0;
+function getHistogramPersistence(histogramValues, checkPositive) {
+    let persistence = 0;
     for (let value of histogramValues.slice(1)) {
         if (checkPositive && value <= 0) {
             break;
         } else if (!checkPositive && value >= 0) {
             break;
         }
-        strength++;
+        persistence++;
     }
 
-    return strength;
+    return persistence;
 }
 
 function buy(price) {
@@ -128,6 +119,7 @@ function buy(price) {
         };
         authedClient.buy(params, function (err, response, data) {
             if (typeof data['id'] !== 'undefined') {
+                logger.log(data['id']);
                 // TODO : use web
                 activeTrade = new Trade(params.product_id, data['id'], 'buy', params.size, params.price);
             }
@@ -179,22 +171,22 @@ function trade() {
 
 new CronJob('*/15 * * * * *', function () {
     authedClient.getAccounts(accountsCallback);
-    publicClient.getProductOrderBook({'level': 1}, orderBookCallback);
     publicClient.getProductHistoricRates({'granularity': config.trade.interval}, historicRatesCallback);
 }, null, true);
 
 new CronJob('*/5 * * * * *', function () {
-    trade();
+    publicClient.getProductOrderBook({'level': 1}, orderBookCallback);
     if (activeTrade !== null) {
         let averageRange = 0;
         tulind.indicators.atr.indicator([productRates.highPrices, productRates.lowPrices, productRates.closePrices], [14], function (err, results) {
             averageRange = results[0][results[0].length - 1];
         });
+        logger.log('Active trade average range='+averageRange);
         if (activeTrade.side == 'buy' && activeTrade.startingPrice - averageRange > productRates.lastLowPrice) {
-            console.log('Activate buy stop loss ' + activeTrade.startingPrice - averageRange);
+            logger.log('Activate buy stop loss ' + activeTrade.startingPrice - averageRange);
             activeTrade = null;
         } else if (activeTrade.side == 'sell' && activeTrade.startingPrice + averageRange < productRates.lastHighPrice) {
-            console.log('Activate sell stop loss ' + activeTrade.startingPrice + averageRange);
+            logger.log('Activate sell stop loss ' + activeTrade.startingPrice + averageRange);
             activeTrade = null;
         }
     }
