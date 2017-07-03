@@ -71,6 +71,14 @@ let accountsCallback = function (err, response, data) {
     }
 };
 
+function getBestBuyingPrice() {
+    return (bestAsk - spread + 0.01).toFixed(2);
+}
+
+function getBestSellingPrice() {
+    return (bestBid + spread - 0.01).toFixed(2);
+}
+
 function getSignal() {
     let histogram = 0;
     let histogramBefore = 0;
@@ -154,10 +162,10 @@ function trade() {
     let signal = getSignal();
     if (signal == 'BUY') {
         logger.log(tickDateStart + ' to ' + tickDateEnd + ' BUY');
-        buy((bestAsk - spread + 0.01).toFixed(2));
+        buy(getBestBuyingPrice());
     } else if (signal == 'SELL') {
         logger.log(tickDateStart + ' to ' + tickDateEnd + ' SELL');
-        sell((bestBid + spread - 0.01).toFixed(2));
+        sell(getBestSellingPrice);
     } else {
         logger.log(tickDateStart + ' to ' + tickDateEnd + ' WAIT');
     }
@@ -177,6 +185,8 @@ new CronJob('*/5 * * * * *', function () {
         if (activeTrade.side == 'buy') {
             if (activeTrade.trailingLoss !== null && bestBid < activeTrade.trailingLoss) {
                 logger.log('Activate buy stop loss ' + activeTrade.trailingLoss);
+                sell(getBestSellingPrice());
+                activeTrade = null;
             }
             if (activeTrade.trailingLoss < productRates.lastLowPrice - averageRange) {
                 activeTrade.trailingLoss = productRates.lastLowPrice - averageRange;
@@ -184,6 +194,7 @@ new CronJob('*/5 * * * * *', function () {
         } else if (activeTrade.side == 'sell') {
             if (activeTrade.trailingLoss !== null && bestAsk > activeTrade.trailingLoss) {
                 logger.log('Activate sell stop loss ' + activeTrade.trailingLoss);
+                // TODO ; buy
             }
             if (activeTrade.trailingLoss > productRates.lastHighPrice + averageRange) {
                 activeTrade.trailingLoss = productRates.lastHighPrice + averageRange;
