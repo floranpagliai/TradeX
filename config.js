@@ -23,7 +23,7 @@ config.trade = {
             up: 0.025,
             // How many candle intervals should a trend persist
             // before we consider it real?
-            persistence: 1
+            persistence: 0
         }
     }
 };

@@ -169,11 +169,6 @@ function trade() {
     }
 }
 
-new CronJob('*/15 * * * * *', function () {
-    authedClient.getAccounts(accountsCallback);
-    publicClient.getProductHistoricRates({'granularity': config.trade.interval}, historicRatesCallback);
-}, null, true);
-
 new CronJob('*/5 * * * * *', function () {
     publicClient.getProductOrderBook({'level': 1}, orderBookCallback);
     if (activeTrade !== null) {
@@ -190,4 +185,9 @@ new CronJob('*/5 * * * * *', function () {
             activeTrade = null;
         }
     }
+}, null, true);
+
+new CronJob('*/15 * * * * *', function () {
+    authedClient.getAccounts(accountsCallback);
+    publicClient.getProductHistoricRates({'granularity': config.trade.interval}, historicRatesCallback);
 }, null, true);
