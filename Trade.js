@@ -5,6 +5,7 @@ class Trade {
         this._side = side;
         this._size = size;
         this._startingPrice = startingPrice;
+        this._trailingLoss = null;
     }
 
     get productId() {
@@ -45,6 +46,14 @@ class Trade {
 
     set startingPrice(value) {
         this._startingPrice = value;
+    }
+
+    get trailingLoss() {
+        return this._trailingLoss;
+    }
+
+    set trailingLoss(value) {
+        this._trailingLoss = value;
     }
 }
 

@@ -23,11 +23,10 @@ let activeTrade = null;
 let publicClient = new Gdax.PublicClient(config.product.id);
 let authedClient = new Gdax.AuthenticatedClient(config.api.key, config.api.secret, config.api.passphrase);
 
-
 let orderBookCallback = function (err, response, data) {
     if (typeof data['bids'] != 'undefined' && typeof data['asks'] != 'undefined') {
-        bestBid = parseFloat(data['bids'][0][0]); // device to buy
-        bestAsk = parseFloat(data['asks'][0][0]);  // device to sell
+        bestBid = parseFloat(data['bids'][0][0]); // device to buy (red)
+        bestAsk = parseFloat(data['asks'][0][0]);  // device to sell (green)
     }
 };
 
@@ -80,17 +79,11 @@ function getSignal() {
         histogramValues = results[2].reverse();
     });
     if (histogram > config.trade.macd.thresholds.up && histogramBefore < config.trade.macd.thresholds.up) {
-        let persistence = getHistogramPersistence(histogramValues, false);
-        if (persistence >= config.trade.macd.thresholds.persistence) {
 
-            return 'BUY';
-        }
+        return 'BUY';
     }  else if (histogram < config.trade.macd.thresholds.down && histogramBefore > config.trade.macd.thresholds.down) {
-        let persistence = getHistogramPersistence(histogramValues, true);
-        if (persistence >= config.trade.macd.thresholds.persistence) {
 
-            return 'SELL';
-        }
+        return 'SELL';
     }
 
     return 'WAIT';
@@ -116,11 +109,14 @@ function buy(price) {
             'price': price,
             'size': Math.floor(quoteCurrencyAccount.available / price * 100) / 100,  // BTC
             'product_id': config.product.id,
+            'time_in_force': 'GTT',
+            'cancel_after': 'hour'
         };
         authedClient.buy(params, function (err, response, data) {
             if (typeof data['id'] !== 'undefined') {
                 logger.log(data['id']);
-                // TODO : use web
+                // TODO : use web to track when order is filled and create trade
+                // use watch to re execute order if canceled and same trend
                 activeTrade = new Trade(params.product_id, data['id'], 'buy', params.size, params.price);
             }
         });
@@ -176,13 +172,20 @@ new CronJob('*/5 * * * * *', function () {
         tulind.indicators.atr.indicator([productRates.highPrices, productRates.lowPrices, productRates.closePrices], [14], function (err, results) {
             averageRange = results[0][results[0].length - 1];
         });
-        logger.log('Active trade average range='+averageRange);
-        if (activeTrade.side == 'buy' && activeTrade.startingPrice - averageRange > productRates.lastLowPrice) {
-            logger.log('Activate buy stop loss ' + activeTrade.startingPrice - averageRange);
-            activeTrade = null;
-        } else if (activeTrade.side == 'sell' && activeTrade.startingPrice + averageRange < productRates.lastHighPrice) {
-            logger.log('Activate sell stop loss ' + activeTrade.startingPrice + averageRange);
-            activeTrade = null;
+        if (activeTrade.side == 'buy') {
+            if (activeTrade.trailingLoss !== null && bestBid < activeTrade.trailingLoss) {
+                logger.log('Activate buy stop loss ' + activeTrade.trailingLoss);
+            }
+            if (activeTrade.trailingLoss < productRates.lastLowPrice - averageRange) {
+                activeTrade.trailingLoss = productRates.lastLowPrice - averageRange;
+            }
+        } else if (activeTrade.side == 'sell') {
+            if (activeTrade.trailingLoss !== null && bestAsk > activeTrade.trailingLoss) {
+                logger.log('Activate sell stop loss ' + activeTrade.trailingLoss);
+            }
+            if (activeTrade.trailingLoss > productRates.lastHighPrice + averageRange) {
+                activeTrade.trailingLoss = productRates.lastHighPrice + averageRange;
+            }
         }
     }
 }, null, true);
