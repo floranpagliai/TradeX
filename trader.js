@@ -210,25 +210,25 @@ new CronJob('*/15 * * * * *', function () {
     publicClient.getProductHistoricRates({'granularity': config.trade.interval}, historicRatesCallback);
 }, null, true);
 
-let express = require('express');
-
-let app = express();
-
-app.get('/', function(req, res) {
-    let histogramValues = [];
-    tulind.indicators.macd.indicator([productRates.closePrices], [12, 26, 9], function (err, results) {
-        // histogram = results[2][results[2].length - 1];
-        // histogramBefore = results[2][results[2].length - 2];
-        histogramValues = results[2];
-    });
-    let data = [];
-    for (let i = 0; i < histogramValues.length; i++) {
-        data.push({
-            times: dateFormat(new Date(productRates.times[i] * 1000), "dd/mm/yyyy HH:MM"),
-            histogram: histogramValues[i]
-        });
-    }
-    res.render('macd.ejs', {histogramValues: data});
-});
-
-app.listen(80);
+// let express = require('express');
+//
+// let app = express();
+//
+// app.get('/', function(req, res) {
+//     let histogramValues = [];
+//     tulind.indicators.macd.indicator([productRates.closePrices], [12, 26, 9], function (err, results) {
+//         // histogram = results[2][results[2].length - 1];
+//         // histogramBefore = results[2][results[2].length - 2];
+//         histogramValues = results[2];
+//     });
+//     let data = [];
+//     for (let i = 0; i < histogramValues.length; i++) {
+//         data.push({
+//             times: dateFormat(new Date(productRates.times[i] * 1000), "dd/mm/yyyy HH:MM"),
+//             histogram: histogramValues[i]
+//         });
+//     }
+//     res.render('macd.ejs', {histogramValues: data});
+// });
+//
+// app.listen(80);
