@@ -231,4 +231,4 @@ app.get('/', function(req, res) {
     res.render('macd.ejs', {histogramValues: data});
 });
 
-app.listen(8080);
+app.listen(80);
