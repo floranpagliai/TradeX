@@ -125,7 +125,6 @@ function buy(price) {
         authedClient.buy(params, function (err, response, data) {
             logger.log(JSON.stringify(data));
             if (typeof data['id'] !== 'undefined') {
-                logger.log(data['id']);
                 // TODO : use web to track when order is filled and create trade
                 // use watch to re execute order if canceled and same trend
                 activeTrade = new Trade(params.product_id, data['id'], 'buy', params.size, params.price);
@@ -174,35 +173,49 @@ function trade() {
         logger.log(quoteCurrencyAccount.available + 'eur');
         logger.log(baseCurrencyAccount.available + 'btc or ' + baseCurrencyAccount.available * bestAsk + 'eur');
     }
+    updateTrailingLoss();
 }
 
-new CronJob('*/5 * * * * *', function () {
-    publicClient.getProductOrderBook({'level': 1}, orderBookCallback);
+function updateTrailingLoss() {
     if (activeTrade !== null) {
         let averageRange = 0;
         tulind.indicators.atr.indicator([productRates.highPrices, productRates.lowPrices, productRates.closePrices], [14], function (err, results) {
             averageRange = results[0][results[0].length - 1];
         });
         if (activeTrade.side == 'buy') {
-            if (activeTrade.trailingLoss !== null && bestBid < activeTrade.trailingLoss) {
-                logger.log('Activate buy stop loss ' + activeTrade.trailingLoss);
-                sell(getBestSellingPrice());
-                activeTrade = null;
-                // TODO : closing long trade function
-            }
             if (activeTrade.trailingLoss < productRates.lastLowPrice - averageRange) {
+                logger.log('Set trailing loss to ' + productRates.lastLowPrice - averageRange);
                 activeTrade.trailingLoss = productRates.lastLowPrice - averageRange;
             }
         } else if (activeTrade.side == 'sell') {
-            if (activeTrade.trailingLoss !== null && bestAsk > activeTrade.trailingLoss) {
-                logger.log('Activate sell stop loss ' + activeTrade.trailingLoss);
-                // TODO ; closing short trade function
-            }
             if (activeTrade.trailingLoss > productRates.lastHighPrice + averageRange) {
                 activeTrade.trailingLoss = productRates.lastHighPrice + averageRange;
             }
         }
     }
+}
+
+function wathcTrailingLoss() {
+    if (activeTrade !== null) {
+        if (activeTrade.side == 'buy') {
+            if (activeTrade.trailingLoss !== null && bestAsk < activeTrade.trailingLoss) {
+                logger.log('Activate buy stop loss ' + activeTrade.trailingLoss);
+                sell(getBestSellingPrice());
+                activeTrade = null;
+                // TODO : closing long trade function
+            }
+        } else if (activeTrade.side == 'sell') {
+            if (activeTrade.trailingLoss !== null && bestBid > activeTrade.trailingLoss) {
+                logger.log('Activate sell stop loss ' + activeTrade.trailingLoss);
+                // TODO ; closing short trade function
+            }
+        }
+    }
+}
+
+new CronJob('*/5 * * * * *', function () {
+    publicClient.getProductOrderBook({'level': 1}, orderBookCallback);
+    wathcTrailingLoss();
 }, null, true);
 
 new CronJob('*/15 * * * * *', function () {
