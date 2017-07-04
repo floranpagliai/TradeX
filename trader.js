@@ -91,7 +91,7 @@ function getSignal() {
     if (histogram > config.trade.macd.thresholds.up && histogramBefore < config.trade.macd.thresholds.up) {
 
         return 'BUY';
-    }  else if (histogram < config.trade.macd.thresholds.down && histogramBefore > config.trade.macd.thresholds.down) {
+    } else if (histogram < config.trade.macd.thresholds.down && histogramBefore > config.trade.macd.thresholds.down) {
 
         return 'SELL';
     }
@@ -131,7 +131,7 @@ function buy(price) {
                 activeTrade = new Trade(params.product_id, data['id'], 'buy', params.size, params.price);
             }
         });
-        logger.log('Buy ' + params.size + ' at ' + params.price);
+        logger.log('Buy ' + params.size + ' at ' + params.price + ' (bestAsk=' + bestAsk + ', bestBid=' + bestBid + ')');
     } else {
         logger.log('No money for buying.');
     }
@@ -147,7 +147,7 @@ function sell(price) {
         authedClient.sell(params, function (err, response, data) {
             logger.log(JSON.stringify(data));
         });
-        logger.log('Sell ' + params.size + ' at ' + params.price);
+        logger.log('Sell ' + params.size + ' at ' + params.price + ' (bestAsk=' + bestAsk + ', bestBid=' + bestBid + ')');
     } else {
         logger.log('No bitcoin to sell.')
     }
