@@ -184,7 +184,7 @@ function updateTrailingLoss() {
         });
         if (activeTrade.side == 'buy') {
             if (activeTrade.trailingLoss < productRates.lastLowPrice - averageRange) {
-                logger.log('Set trailing loss to ' + productRates.lastLowPrice - averageRange);
+                logger.log('Set trailing loss to ' + (productRates.lastLowPrice - averageRange));
                 activeTrade.trailingLoss = productRates.lastLowPrice - averageRange;
             }
         } else if (activeTrade.side == 'sell') {
