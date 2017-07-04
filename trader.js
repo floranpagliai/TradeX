@@ -123,7 +123,7 @@ function buy(price) {
             'cancel_after': 'hour'
         };
         authedClient.buy(params, function (err, response, data) {
-            logger.log(data);
+            logger.log(JSON.stringify(data));
             if (typeof data['id'] !== 'undefined') {
                 logger.log(data['id']);
                 // TODO : use web to track when order is filled and create trade
@@ -145,7 +145,7 @@ function sell(price) {
             'product_id': config.product.id,
         };
         authedClient.sell(params, function (err, response, data) {
-            logger.log(data);
+            logger.log(JSON.stringify(data));
         });
         logger.log('Sell ' + params.size + ' at ' + params.price);
     } else {
