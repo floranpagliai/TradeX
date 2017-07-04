@@ -48,9 +48,9 @@ class Account {
     }
 
     update(balance, available, hold) {
-        this._balance = balance;
-        this._available = available;
-        this._hold = hold;
+        this._balance = parseFloat(balance);
+        this._available = parseFloat(available);
+        this._hold = parseFloat(hold);
     }
 }
 
