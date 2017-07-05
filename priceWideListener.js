@@ -12,7 +12,7 @@ new CronJob('*/15 * * * * *', function () {
             bestAsk = parseFloat(data['asks'][0][0]);  // buying order
 
             if (bestBid > bestAsk) {
-                logger.log('buy for ' + bestBid + ' sell for' + bestAsk + ' = ' + (bestAsk - bestBid), 'log-wide.txt');
+                logger.log('long for ' + bestBid + ' short for' + bestAsk + ' = ' + (bestAsk - bestBid), 'log-wide.txt');
             }
             if ((bestAsk - bestBid) < 0) {
                 logger.log('negative wide', 'log-wide.txt');

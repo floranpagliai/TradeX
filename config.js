@@ -15,16 +15,25 @@ config.product = {
     quote_increment: 0.01
 };
 
-config.trade = {
-    interval: 60*5,
-    macd: {
+config.advisor = {
+    MACD: {
+        short: 12,
+        long: 21,
+        signal: 9,
         thresholds: {
-            down: -0.025,
-            up: 0.025,
+            down: -0.25,
+            up: 0.25,
             // How many candle intervals should a trend persist
             // before we consider it real?
-            persistence: 0
+            persistence: 1
         }
+    }
+};
+
+config.trade = {
+    interval: 60*5,
+    trailing_loss: {
+        interval: 14
     }
 };
 

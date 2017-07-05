@@ -8,6 +8,7 @@ const Account = require('./Account.js');
 const ProductRates = require('./ProductRates.js');
 const Trade = require('./Trade.js');
 let config = require("./config.js");
+let MACD = require('./strategies/MACD');
 
 
 // Init accounts
@@ -26,8 +27,8 @@ let authedClient = new Gdax.AuthenticatedClient(config.api.key, config.api.secre
 
 let orderBookCallback = function (err, response, data) {
     if (typeof data['bids'] != 'undefined' && typeof data['asks'] != 'undefined') {
-        bestAsk = parseFloat(data['asks'][0][0]);  // device to sell (red)
-        bestBid = parseFloat(data['bids'][0][0]); // device to buy (green)
+        bestAsk = parseFloat(data['asks'][0][0]);  // device to short (red)
+        bestBid = parseFloat(data['bids'][0][0]); // device to long (green)
         spread = bestAsk - bestBid;
     }
 };
@@ -53,6 +54,7 @@ let historicRatesCallback = function (err, response, data) {
         openPrices.push(data[i][3]);
         closePrices.push(data[i][4]);
         volumes.push(data[i][5]);
+        MACD.advice(closePrices)
     }
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
     trade();
@@ -85,41 +87,7 @@ function getBestSellingPrice() {
     return (bestBid + spread - config.product.quote_increment).toFixed(2);
 }
 
-function getSignal() {
-    let histogram = 0;
-    let histogramBefore = 0;
-    let histogramValues = [];
-    tulind.indicators.macd.indicator([productRates.closePrices], [12, 26, 9], function (err, results) {
-        histogram = results[2][results[2].length - 1];
-        histogramBefore = results[2][results[2].length - 2];
-        histogramValues = results[2].reverse();
-    });
-    if (histogram > config.trade.macd.thresholds.up && histogramBefore < config.trade.macd.thresholds.up) {
-
-        return 'BUY';
-    } else if (histogram < config.trade.macd.thresholds.down && histogramBefore > config.trade.macd.thresholds.down) {
-
-        return 'SELL';
-    }
-
-    return 'WAIT';
-}
-
-function getHistogramPersistence(histogramValues, checkPositive) {
-    let persistence = 0;
-    for (let value of histogramValues.slice(1)) {
-        if (checkPositive && value <= 0) {
-            break;
-        } else if (!checkPositive && value >= 0) {
-            break;
-        }
-        persistence++;
-    }
-
-    return persistence;
-}
-
-function buy(price) {
+function long(price) {
     if (quoteCurrencyAccount.available > price * config.product.base_min_size && price > 0) {
         let params = {
             'price': price,
@@ -128,12 +96,12 @@ function buy(price) {
             'time_in_force': 'GTT',
             'cancel_after': 'hour'
         };
-        authedClient.buy(params, function (err, response, data) {
+        authedClient.long(params, function (err, response, data) {
             logger.log(JSON.stringify(data));
             if (typeof data['id'] !== 'undefined') {
                 // TODO : use web to track when order is filled and create trade
                 // use watch to re execute order if canceled and same trend
-                activeTrade = new Trade(params.product_id, data['id'], 'buy', params.size, params.price);
+                activeTrade = new Trade(params.product_id, data['id'], 'long', params.size, params.price);
             }
         });
         logger.log('Buy ' + params.size + ' at ' + params.price + ' (bestAsk=' + bestAsk + ', bestBid=' + bestBid + ')');
@@ -142,14 +110,14 @@ function buy(price) {
     }
 }
 
-function sell(price) {
+function short(price) {
     if (baseCurrencyAccount.available > config.product.base_min_size && price > 0) {
         let params = {
             'price': price,
             'size': baseCurrencyAccount.available,  // BTC
             'product_id': config.product.id,
         };
-        authedClient.sell(params, function (err, response, data) {
+        authedClient.short(params, function (err, response, data) {
             logger.log(JSON.stringify(data));
         });
         logger.log('Sell ' + params.size + ' at ' + params.price + ' (bestAsk=' + bestAsk + ', bestBid=' + bestBid + ')');
@@ -165,17 +133,17 @@ function trade() {
     lastTime = productRates.lastTime;
     let tickDateStart = dateFormat(new Date((lastTime - config.trade.interval) * 1000), "HH:MM");
     let tickDateEnd = dateFormat(new Date(lastTime * 1000), "HH:MM");
-    let signal = getSignal();
-    if (signal == 'BUY') {
-        logger.log(tickDateStart + ' to ' + tickDateEnd + ' BUY');
-        buy(getBestBuyingPrice());
-    } else if (signal == 'SELL') {
-        logger.log(tickDateStart + ' to ' + tickDateEnd + ' SELL');
-        sell(getBestSellingPrice);
+    let advice = MACD.advice(productRates.closePrices);
+    if (advice == 'LONG') {
+        logger.log(tickDateStart + ' to ' + tickDateEnd + ' LONG');
+        long(getBestBuyingPrice());
+    } else if (advice == 'SHORT') {
+        logger.log(tickDateStart + ' to ' + tickDateEnd + ' SHORT');
+        // short(getBestSellingPrice);
     } else {
         logger.log(tickDateStart + ' to ' + tickDateEnd + ' WAIT');
     }
-    if (signal == 'BUY' || signal == 'SELL') {
+    if (advice == 'LONG' || advice == 'SHORT') {
         logger.log(quoteCurrencyAccount.available + 'eur');
         logger.log(baseCurrencyAccount.available + 'btc or ' + baseCurrencyAccount.available * bestAsk + 'eur');
     }
@@ -185,15 +153,15 @@ function trade() {
 function updateTrailingLoss() {
     if (activeTrade !== null) {
         let averageRange = 0;
-        tulind.indicators.atr.indicator([productRates.highPrices, productRates.lowPrices, productRates.closePrices], [14], function (err, results) {
+        tulind.indicators.atr.indicator([productRates.highPrices, productRates.lowPrices, productRates.closePrices], [config.trade.trailing_loss.interval], function (err, results) {
             averageRange = results[0][results[0].length - 1];
         });
-        if (activeTrade.side == 'buy') {
+        if (activeTrade.side == 'long') {
             if (activeTrade.trailingLoss < productRates.lastLowPrice - averageRange) {
                 logger.log('Set trailing loss to ' + (productRates.lastLowPrice - averageRange));
                 activeTrade.trailingLoss = productRates.lastLowPrice - averageRange;
             }
-        } else if (activeTrade.side == 'sell') {
+        } else if (activeTrade.side == 'short') {
             if (activeTrade.trailingLoss > productRates.lastHighPrice + averageRange) {
                 activeTrade.trailingLoss = productRates.lastHighPrice + averageRange;
             }
@@ -203,22 +171,24 @@ function updateTrailingLoss() {
 
 function watchTrailingLoss() {
     if (activeTrade !== null) {
-        if (activeTrade.side == 'buy') {
+        if (activeTrade.side == 'long') {
             if (activeTrade.trailingLoss !== null && bestBid < activeTrade.trailingLoss) {
-                logger.log('Activate buy stop loss ' + activeTrade.trailingLoss);
-                sell(getBestSellingPrice());
+                logger.log('Activate long stop loss ' + activeTrade.trailingLoss);
+                short(getBestSellingPrice());
                 activeTrade = null;
                 // TODO : closing long trade function
             }
-        } else if (activeTrade.side == 'sell') {
+        } else if (activeTrade.side == 'short') {
             if (activeTrade.trailingLoss !== null && bestAsk > activeTrade.trailingLoss) {
-                logger.log('Activate sell stop loss ' + activeTrade.trailingLoss);
+                logger.log('Activate short stop loss ' + activeTrade.trailingLoss);
                 // TODO ; closing short trade function
             }
         }
     }
 }
 
+console.log(tulind.indicators.atr);
+MACD.init();
 new CronJob('*/5 * * * * *', function () {
     publicClient.getProductOrderBook({'level': 1}, orderBookCallback);
     watchTrailingLoss();
