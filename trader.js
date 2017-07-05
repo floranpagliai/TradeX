@@ -204,14 +204,14 @@ function updateTrailingLoss() {
 function watchTrailingLoss() {
     if (activeTrade !== null) {
         if (activeTrade.side == 'buy') {
-            if (activeTrade.trailingLoss !== null && bestAsk < activeTrade.trailingLoss) {
+            if (activeTrade.trailingLoss !== null && bestBid < activeTrade.trailingLoss) {
                 logger.log('Activate buy stop loss ' + activeTrade.trailingLoss);
                 sell(getBestSellingPrice());
                 activeTrade = null;
                 // TODO : closing long trade function
             }
         } else if (activeTrade.side == 'sell') {
-            if (activeTrade.trailingLoss !== null && bestBid > activeTrade.trailingLoss) {
+            if (activeTrade.trailingLoss !== null && bestAsk > activeTrade.trailingLoss) {
                 logger.log('Activate sell stop loss ' + activeTrade.trailingLoss);
                 // TODO ; closing short trade function
             }
