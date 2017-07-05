@@ -72,11 +72,17 @@ let accountsCallback = function (err, response, data) {
 };
 
 function getBestBuyingPrice() {
-    return (bestAsk - spread + 0.01).toFixed(2);
+    if (spread == config.product.quote_increment) {
+        return (bestAsk - spread).toFixed(2)
+    }
+    return (bestAsk - spread + config.product.quote_increment).toFixed(2);
 }
 
 function getBestSellingPrice() {
-    return (bestBid + spread - 0.01).toFixed(2);
+    if (spread == config.product.quote_increment) {
+        return (bestBid + spread).toFixed(2)
+    }
+    return (bestBid + spread - config.product.quote_increment).toFixed(2);
 }
 
 function getSignal() {
@@ -195,7 +201,7 @@ function updateTrailingLoss() {
     }
 }
 
-function wathcTrailingLoss() {
+function watchTrailingLoss() {
     if (activeTrade !== null) {
         if (activeTrade.side == 'buy') {
             if (activeTrade.trailingLoss !== null && bestAsk < activeTrade.trailingLoss) {
@@ -215,13 +221,14 @@ function wathcTrailingLoss() {
 
 new CronJob('*/5 * * * * *', function () {
     publicClient.getProductOrderBook({'level': 1}, orderBookCallback);
-    wathcTrailingLoss();
+    watchTrailingLoss();
 }, null, true);
 
 new CronJob('*/15 * * * * *', function () {
     authedClient.getAccounts(accountsCallback);
     publicClient.getProductHistoricRates({'granularity': config.trade.interval}, historicRatesCallback);
 }, null, true);
+
 
 // let express = require('express');
 //
