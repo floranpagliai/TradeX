@@ -26,10 +26,13 @@ let publicClient = new Gdax.PublicClient(config.product.id);
 let authedClient = new Gdax.AuthenticatedClient(config.api.key, config.api.secret, config.api.passphrase);
 
 let orderBookCallback = function (err, response, data) {
+    if (!data instanceof Array) {
+        logger.log('[ERROR] orderBookCallback data is not array');
+    }
     if (typeof data['bids'] != 'undefined' && typeof data['asks'] != 'undefined') {
         bestAsk = parseFloat(data['asks'][0][0]);  // device to short (red)
         bestBid = parseFloat(data['bids'][0][0]); // device to long (green)
-        spread = bestAsk - bestBid;
+        spread = (bestAsk - bestBid).toFixed(2);
     }
 };
 
@@ -96,9 +99,10 @@ function long(price) {
             'size': Math.floor(quoteCurrencyAccount.available / price * 100) / 100,  // BTC
             'product_id': config.product.id,
             'time_in_force': 'GTT',
-            'cancel_after': 'hour'
+            'cancel_after': 'hour',
+            'post_only': true
         };
-        authedClient.long(params, function (err, response, data) {
+        authedClient.buy(params, function (err, response, data) {
             logger.log(JSON.stringify(data));
             if (typeof data['id'] !== 'undefined') {
                 // TODO : use web to track when order is filled and create trade
@@ -118,8 +122,9 @@ function short(price) {
             'price': price,
             'size': baseCurrencyAccount.available,  // BTC
             'product_id': config.product.id,
+            'post_only': true
         };
-        authedClient.short(params, function (err, response, data) {
+        authedClient.sell(params, function (err, response, data) {
             logger.log(JSON.stringify(data));
         });
         logger.log('Sell ' + params.size + ' at ' + params.price + ' (bestAsk=' + bestAsk + ', bestBid=' + bestBid + ')');
