@@ -54,11 +54,11 @@ let historicRatesCallback = function (err, response, data) {
         openPrices.push(data[i][3]);
         closePrices.push(data[i][4]);
         volumes.push(data[i][5]);
-        if (i != data.length - 1) {
-            MACD.advice(closePrices);
-        }
     }
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
+    if (lastTime === null) {
+        MACD.advice(closePrices)
+    }
     trade();
 };
 
