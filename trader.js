@@ -181,6 +181,9 @@ function watchTrailingLoss() {
         if (activeTrade.side == 'long') {
             if (activeTrade.trailingLoss !== null && bestBid < activeTrade.trailingLoss) {
                 logger.log('Activate long stop loss ' + activeTrade.trailingLoss);
+                authedClient.cancelOrder(activeTrade.orderId, function (err, response, data) {
+                    logger.log(JSON.stringify(data));
+                });
                 short(getBestSellingPrice());
                 activeTrade = null;
                 // TODO : closing long trade function
