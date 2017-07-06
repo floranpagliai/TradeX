@@ -54,7 +54,9 @@ let historicRatesCallback = function (err, response, data) {
         openPrices.push(data[i][3]);
         closePrices.push(data[i][4]);
         volumes.push(data[i][5]);
-        MACD.advice(closePrices)
+        if (i != data.length - 1) {
+            MACD.advice(closePrices);
+        }
     }
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
     trade();
@@ -187,7 +189,6 @@ function watchTrailingLoss() {
     }
 }
 
-console.log(tulind.indicators.atr);
 MACD.init();
 new CronJob('*/5 * * * * *', function () {
     publicClient.getProductOrderBook({'level': 1}, orderBookCallback);
