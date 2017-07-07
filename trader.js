@@ -82,14 +82,14 @@ function getBestBuyingPrice() {
     if (spread == config.product.quote_increment) {
         return (bestAsk - spread).toFixed(2)
     }
-    return (bestAsk - spread + config.product.quote_increment).toFixed(2);
+    return (bestAsk - config.product.quote_increment).toFixed(2);
 }
 
 function getBestSellingPrice() {
     if (spread == config.product.quote_increment) {
         return (bestBid + spread).toFixed(2)
     }
-    return (bestBid + spread - config.product.quote_increment).toFixed(2);
+    return (bestBid + config.product.quote_increment).toFixed(2);
 }
 
 function long(price) {
