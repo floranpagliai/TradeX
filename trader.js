@@ -164,13 +164,15 @@ function updateTrailingLoss() {
             averageRange = results[0][results[0].length - 1];
         });
         if (activeTrade.side == 'long') {
-            if (activeTrade.trailingLoss < productRates.lastLowPrice - averageRange) {
-                logger.log('Set trailing loss to ' + (productRates.lastLowPrice - averageRange));
-                activeTrade.trailingLoss = productRates.lastLowPrice - averageRange;
+            let trailingPrice = productRates.lastLowPrice - (averageRange * 1.9);
+            if (activeTrade.trailingLoss < trailingPrice) {
+                logger.log('Set trailing loss to ' + trailingPrice);
+                activeTrade.trailingLoss = trailingPrice;
             }
         } else if (activeTrade.side == 'short') {
-            if (activeTrade.trailingLoss > productRates.lastHighPrice + averageRange) {
-                activeTrade.trailingLoss = productRates.lastHighPrice + averageRange;
+            let trailingPrice = productRates.lastHighPrice + (averageRange * 1.9);
+            if (activeTrade.trailingLoss > trailingPrice) {
+                activeTrade.trailingLoss = trailingPrice;
             }
         }
     }
