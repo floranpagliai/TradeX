@@ -1,6 +1,6 @@
 let Gdax = require('gdax');
 let CronJob = require('cron').CronJob;
-let logger = require('./Logger');
+let logger = require('./core/Logger');
 let publicClient = new Gdax.PublicClient('BTC-EUR');
 
 new CronJob('*/15 * * * * *', function () {

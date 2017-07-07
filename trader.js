@@ -2,39 +2,24 @@ let Gdax = require('gdax');
 let dateFormat = require('dateformat');
 let tulind = require('tulind');
 let CronJob = require('cron').CronJob;
-let logger = require('./Logger.js');
+let logger = require('./core/Logger.js');
 
-const Account = require('./Account.js');
-const ProductRates = require('./ProductRates.js');
-const Trade = require('./Trade.js');
+const Account = require('./models/Account.js');
+const ProductRates = require('./models/ProductRates.js');
+const Trade = require('./models/Trade.js');
 let config = require("./config.js");
 let MACD = require('./strategies/MACD');
+let exchange = require("./exchanges/gdax");
 
 
 // Init accounts
-let baseCurrencyAccount = new Account(0, config.product.base_currency, 0, 0, 0);
-let quoteCurrencyAccount = new Account(0, config.product.quote_currency, 0, 0, 0);
+let baseCurrencyAccount = new Account(0, config.trade.base_currency, 0, 0, 0);
+let quoteCurrencyAccount = new Account(0, config.trade.quote_currency, 0, 0, 0);
 
 let productRates = [];
 let lastTime = null;
-let bestBid = 0;
-let bestAsk = 0;
-let spread = 0;
 let activeTrade = null;
 
-let publicClient = new Gdax.PublicClient(config.product.id);
-let authedClient = new Gdax.AuthenticatedClient(config.api.key, config.api.secret, config.api.passphrase);
-
-let orderBookCallback = function (err, response, data) {
-    if (!data instanceof Array) {
-        logger.log('[ERROR] orderBookCallback data is not array');
-    }
-    if (typeof data['bids'] != 'undefined' && typeof data['asks'] != 'undefined') {
-        bestAsk = parseFloat(data['asks'][0][0]);  // device to short (red)
-        bestBid = parseFloat(data['bids'][0][0]); // device to long (green)
-        spread = (bestAsk - bestBid).toFixed(2);
-    }
-};
 
 let historicRatesCallback = function (err, response, data) {
     if (!data instanceof Array) {
@@ -60,7 +45,8 @@ let historicRatesCallback = function (err, response, data) {
     }
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
     if (lastTime === null) {
-        MACD.advice(closePrices)
+        MACD.advice(closePrices);
+        // TODO : Remove last value
     }
     trade();
 };
@@ -78,58 +64,36 @@ let accountsCallback = function (err, response, data) {
     }
 };
 
-function getBestBuyingPrice() {
-    if (spread == config.product.quote_increment) {
-        return (bestAsk - spread).toFixed(2)
-    }
-    return (bestAsk - config.product.quote_increment).toFixed(2);
-}
-
-function getBestSellingPrice() {
-    if (spread == config.product.quote_increment) {
-        return (bestBid + spread).toFixed(2)
-    }
-    return (bestBid + config.product.quote_increment).toFixed(2);
-}
-
-function long(price) {
-    if (quoteCurrencyAccount.available > price * config.product.base_min_size && price > 0) {
-        let params = {
-            'price': price,
-            'size': Math.floor(quoteCurrencyAccount.available / price * 100) / 100,  // BTC
-            'product_id': config.product.id,
-            'time_in_force': 'GTT',
-            'cancel_after': 'hour',
-            'post_only': true
-        };
-        authedClient.buy(params, function (err, response, data) {
-            logger.log(JSON.stringify(data));
+function openPosition(side) {
+    if (side == 'LONG') {
+        let size = Math.floor(quoteCurrencyAccount.available / price * 100) / 100;
+        exchange.buy(size, function (err, response, data) {
             if (typeof data['id'] !== 'undefined') {
-                // TODO : use web to track when order is filled and create trade
-                // use watch to re execute order if canceled and same trend
-                activeTrade = new Trade(params.product_id, data['id'], 'long', params.size, params.price);
+                if (activeTrade !== null) {
+                    activeTrade.openingOrderId = data['id'];
+                    activeTrade.price = data['price'];
+                    activeTrade.size = data['size'];
+                } else {
+                    activeTrade = new Trade(exchange.product, data['id'], 'LONG', size, price);
+                }
             }
         });
-        logger.log('Buy ' + params.size + ' at ' + params.price + ' (bestAsk=' + bestAsk + ', bestBid=' + bestBid + ')');
-    } else {
-        logger.log('No money for buying.');
+    } else if (side == 'SHORT') {
+
     }
 }
 
-function short(price) {
-    if (baseCurrencyAccount.available > config.product.base_min_size && price > 0) {
-        let params = {
-            'price': price,
-            'size': baseCurrencyAccount.available,  // BTC
-            'product_id': config.product.id,
-            'post_only': true
-        };
-        authedClient.sell(params, function (err, response, data) {
-            logger.log(JSON.stringify(data));
+function closePosition() {
+    if (activeTrade.side == 'LONG') {
+        let size = quoteCurrencyAccount.available;
+        exchange.sell(size, function (err, response, data) {
+            if (typeof data['id'] !== 'undefined') {
+                // use watch to re execute order if canceled and same trend
+                activeTrade.closingOrderId = data['id'];
+            }
         });
-        logger.log('Sell ' + params.size + ' at ' + params.price + ' (bestAsk=' + bestAsk + ', bestBid=' + bestBid + ')');
-    } else {
-        logger.log('No bitcoin to sell.')
+    } else if (type == 'SHORT') {
+
     }
 }
 
@@ -141,15 +105,8 @@ function trade() {
     let tickDateStart = dateFormat(new Date((lastTime - config.trade.interval) * 1000), "HH:MM");
     let tickDateEnd = dateFormat(new Date(lastTime * 1000), "HH:MM");
     let advice = MACD.advice(productRates.closePrices);
-    if (advice == 'LONG') {
-        logger.log(tickDateStart + ' to ' + tickDateEnd + ' LONG');
-        long(getBestBuyingPrice());
-    } else if (advice == 'SHORT') {
-        logger.log(tickDateStart + ' to ' + tickDateEnd + ' SHORT');
-        // short(getBestSellingPrice);
-    } else {
-        logger.log(tickDateStart + ' to ' + tickDateEnd + ' WAIT');
-    }
+    logger.log(tickDateStart + ' to ' + tickDateEnd + ' ' + advice);
+    openPosition(advice);
     if (advice == 'LONG' || advice == 'SHORT') {
         logger.log(quoteCurrencyAccount.available + 'eur');
         logger.log(baseCurrencyAccount.available + 'btc or ' + baseCurrencyAccount.available * bestAsk + 'eur');
@@ -158,19 +115,19 @@ function trade() {
 }
 
 function updateTrailingLoss() {
-    if (activeTrade !== null) {
+    if (activeTrade !== null && activeTrade.openingOrderStatus === 'DONE') {
         let averageRange = 0;
         tulind.indicators.atr.indicator([productRates.highPrices, productRates.lowPrices, productRates.closePrices], [config.trade.trailing_loss.interval], function (err, results) {
             averageRange = results[0][results[0].length - 1];
         });
-        if (activeTrade.side == 'long') {
-            let trailingPrice = productRates.lastLowPrice - (averageRange * 1.9);
+        if (activeTrade.side == 'LONG') {
+            let trailingPrice = productRates.lastLowPrice - (averageRange * config.trade.trailing_loss.weight);
             if (activeTrade.trailingLoss < trailingPrice) {
                 logger.log('Set trailing loss to ' + trailingPrice);
                 activeTrade.trailingLoss = trailingPrice;
             }
-        } else if (activeTrade.side == 'short') {
-            let trailingPrice = productRates.lastHighPrice + (averageRange * 1.9);
+        } else if (activeTrade.side == 'SHORT') {
+            let trailingPrice = productRates.lastHighPrice + (averageRange * config.trade.trailing_loss.weight);
             if (activeTrade.trailingLoss > trailingPrice) {
                 activeTrade.trailingLoss = trailingPrice;
             }
@@ -178,36 +135,81 @@ function updateTrailingLoss() {
     }
 }
 
-function watchTrailingLoss() {
+function updateActiveTrade() {
     if (activeTrade !== null) {
-        if (activeTrade.side == 'long') {
-            if (activeTrade.trailingLoss !== null && bestBid < activeTrade.trailingLoss) {
-                logger.log('Activate long stop loss ' + activeTrade.trailingLoss);
-                authedClient.cancelOrder(activeTrade.orderId, function (err, response, data) {
-                    logger.log(JSON.stringify(data));
-                });
-                short(getBestSellingPrice());
-                activeTrade = null;
-                // TODO : closing long trade function
-            }
-        } else if (activeTrade.side == 'short') {
-            if (activeTrade.trailingLoss !== null && bestAsk > activeTrade.trailingLoss) {
-                logger.log('Activate short stop loss ' + activeTrade.trailingLoss);
-                // TODO ; closing short trade function
+        if (activeTrade.openingOrderStatus !== 'DONE') {
+            exchange.getOrder(activeTrade.openingOrderId, function (err, response, data) {
+                let status = data['status'];
+                if (status == 'done') {
+                    activeTrade.openingOrderStatus = 'DONE';
+                } else {
+                    if (activeTrade.side == MACD.trend.side) {
+                        let bestPrice = activeTrade.side == 'LONG' ? exchange.getBestSellingPrice() : exchange.getBestBuyingPrice();
+                        if (price != bestPrice) {
+                            exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
+                            });
+                            openPosition();
+                        }
+                    } else {
+                        exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
+                        });
+                        activeTrade = null;
+                    }
+                }
+            });
+        }
+        if (activeTrade.closingOrderId !== null && activeTrade.closingOrderStatus !== 'DONE') {
+            exchange.getOrder(activeTrade.closingOrderId, function (err, response, data) {
+                let status = data['status'];
+                let price = parseFloat(data['price']).toFixed(2);
+                if (status == 'done') {
+                    activeTrade.closingOrderStatus = 'DONE'; // Useless for now
+                    activeTrade = null;
+                } else {
+                    // if (activeTrade.side != MACD.trend.side) {
+                    let bestPrice = activeTrade.side == 'LONG' ? exchange.getBestSellingPrice() : exchange.getBestBuyingPrice();
+                    if (price != bestPrice) {
+                        exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
+                        });
+                        closePosition();
+                    }
+                    // } else {
+                    //     // Trend revert
+                    //     exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {});
+                    //     activeTrade.closingOrderId = null;
+                    // }
+                }
+            });
+        }
+        if (activeTrade.trailingLoss !== null) {
+            if ((activeTrade.side == 'LONG' && exchange.getBestBid() < activeTrade.trailingLoss) || (activeTrade.side == 'SHORT' && exchange.getBestAsk() > activeTrade.trailingLoss)) {
+                logger.log('Activate stop loss ' + activeTrade.trailingLoss);
+                if (activeTrade.openingOrderStatus !== 'DONE') {
+                    exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
+                        activeTrade = null;
+                    });
+                } else {
+                    closePosition();
+                }
             }
         }
     }
 }
 
 MACD.init();
+exchange.init();
 new CronJob('*/5 * * * * *', function () {
-    publicClient.getProductOrderBook({'level': 1}, orderBookCallback);
-    watchTrailingLoss();
+    exchange.getBestOrders(function (_bestAsk, _bestBid, _spread) {
+        bestAsk = _bestAsk;
+        bestBid = _bestBid;
+        spread = _spread;
+    });
+    updateActiveTrade();
 }, null, true);
 
 new CronJob('*/15 * * * * *', function () {
-    authedClient.getAccounts(accountsCallback);
-    publicClient.getProductHistoricRates({'granularity': config.trade.interval}, historicRatesCallback);
+    exchange.getAccounts(accountsCallback);
+    exchange.getHistoricRates(historicRatesCallback);
 }, null, true);
 
 

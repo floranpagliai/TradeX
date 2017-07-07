@@ -18,11 +18,11 @@ method.advice = function (closingPrices) {
         histogramValues = results[2].reverse();
     });
     if (histogramValues[0] > settings.thresholds.up) {
-        if (this.trend.side !== 'long') {
+        if (this.trend.side !== 'LONG') {
             this.trend = {
                 duration: 0,
                 persisted: false,
-                side: 'long',
+                side: 'LONG',
                 adviced: false
             };
         }
@@ -36,11 +36,11 @@ method.advice = function (closingPrices) {
             return 'LONG';
         }
     } else if (histogramValues[0] < settings.thresholds.down) {
-        if (this.trend.side !== 'down') {
+        if (this.trend.side !== 'SHORT') {
             this.trend = {
                 duration: 0,
                 persisted: false,
-                side: 'down',
+                side: 'SHORT',
                 adviced: false
             };
         }
