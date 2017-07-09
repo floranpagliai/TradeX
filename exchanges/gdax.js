@@ -30,12 +30,11 @@ method.getHistoricRates = function (callback) {
     this.gdax_public.getProductHistoricRates({'granularity': config.trade.interval}, result);
 };
 
-method.getBestOrders = function (callback) {
+method.getBestOrders = function () {
     let result = function (err, response, data) {
         bestAsk = parseFloat(data['asks'][0][0]);  // device to short (red)
         bestBid = parseFloat(data['bids'][0][0]); // device to long (green)
         spread = (bestAsk - bestBid).toFixed(2);
-        callback(bestAsk, bestBid, spread)
     };
 
     this.gdax_public.getProductOrderBook({'level': 1}, result);
@@ -71,7 +70,7 @@ method.buy = function (size, callback) {
         'post_only': true // TODO ; config
     };
     // quoteCurrencyAccount.available > price * products[this.product].base_min_size
-    if (price > 0) {
+    if (params.price > 0) {
         this.gdax.buy(params, result);
         logger.log('Buy ' + params.size + ' at ' + params.price + ' (bestAsk=' + bestAsk + ', bestBid=' + bestBid + ')');
     }

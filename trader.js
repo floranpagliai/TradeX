@@ -51,22 +51,14 @@ let historicRatesCallback = function (err, response, data) {
     trade();
 };
 
-let accountsCallback = function (err, response, data) {
-    if (data instanceof Array) {
-        for (let account of data) {
-            if (account)
-                if (account['currency'] == config.product.quote_currency) {
-                    quoteCurrencyAccount.update(account['balance'], account['available'], account['hold']);
-                } else if (account['currency'] == config.product.base_currency) {
-                    baseCurrencyAccount.update(account['balance'], account['available'], account['hold']);
-                }
-        }
-    }
+let accountsCallback = function (quoteCurrencyData, baseCurrencyData) {
+    quoteCurrencyAccount.update(quoteCurrencyData['balance'], quoteCurrencyData['available'], quoteCurrencyData['hold']);
+    baseCurrencyAccount.update(baseCurrencyData['balance'], baseCurrencyData['available'], baseCurrencyData['hold']);
 };
 
 function openPosition(side) {
     if (side == 'LONG') {
-        let size = Math.floor(quoteCurrencyAccount.available / price * 100) / 100;
+        let size = Math.floor(quoteCurrencyAccount.available / exchange.getBestBuyingPrice() * 100) / 100;
         exchange.buy(size, function (err, response, data) {
             if (typeof data['id'] !== 'undefined') {
                 if (activeTrade !== null) {
@@ -109,7 +101,7 @@ function trade() {
     openPosition(advice);
     if (advice == 'LONG' || advice == 'SHORT') {
         logger.log(quoteCurrencyAccount.available + 'eur');
-        logger.log(baseCurrencyAccount.available + 'btc or ' + baseCurrencyAccount.available * bestAsk + 'eur');
+        logger.log(baseCurrencyAccount.available + 'btc or ' + baseCurrencyAccount.available * exchange.getBestAsk + 'eur');
     }
     updateTrailingLoss();
 }
@@ -140,6 +132,7 @@ function updateActiveTrade() {
         if (activeTrade.openingOrderStatus !== 'DONE') {
             exchange.getOrder(activeTrade.openingOrderId, function (err, response, data) {
                 let status = data['status'];
+                let price = parseFloat(data['price']).toFixed(2);
                 if (status == 'done') {
                     activeTrade.openingOrderStatus = 'DONE';
                 } else {
@@ -199,11 +192,7 @@ function updateActiveTrade() {
 MACD.init();
 exchange.init();
 new CronJob('*/5 * * * * *', function () {
-    exchange.getBestOrders(function (_bestAsk, _bestBid, _spread) {
-        bestAsk = _bestAsk;
-        bestBid = _bestBid;
-        spread = _spread;
-    });
+    exchange.getBestOrders();
     updateActiveTrade();
 }, null, true);
 
