@@ -108,7 +108,6 @@ function trade() {
 
 function updateTrailingLoss() {
     if (activeTrade !== null && activeTrade.openingOrderStatus === 'DONE') {
-        logger.log('Enter in update trailing loss');
         let averageRange = 0;
         tulind.indicators.atr.indicator([productRates.highPrices, productRates.lowPrices, productRates.closePrices], [config.trade.trailing_loss.interval], function (err, results) {
             averageRange = results[0][results[0].length - 1];
@@ -131,7 +130,6 @@ function updateTrailingLoss() {
 
 function updateActiveTrade() {
     if (activeTrade !== null) {
-        logger.log('opening order status = ' + activeTrade.openingOrderStatus);
         if (activeTrade.openingOrderStatus !== 'DONE') {
             exchange.getOrder(activeTrade.openingOrderId, function (err, response, data) {
                 logger.log(JSON.stringify(data));
@@ -195,8 +193,6 @@ function updateActiveTrade() {
 
 MACD.init();
 exchange.init();
-activeTrade = new Trade(exchange.product, 'LONG', 0.03, 2120.07, 'test');
-activeTrade.openingOrderStatus = 'DONE';
 new CronJob('*/5 * * * * *', function () {
     exchange.getBestOrders();
     updateActiveTrade();

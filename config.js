@@ -29,7 +29,7 @@ config.trade = {
     interval: 300,
     trailing_loss: {
         interval: 14,
-        weight: 1.9
+        weight: 1.2
     }
 };
 
