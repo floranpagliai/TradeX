@@ -33,4 +33,6 @@ config.trade = {
     }
 };
 
+// TODO : add config for money management
+
 module.exports = config;

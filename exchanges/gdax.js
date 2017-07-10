@@ -32,9 +32,11 @@ method.getHistoricRates = function (callback) {
 
 method.getBestOrders = function () {
     let result = function (err, response, data) {
-        bestAsk = parseFloat(data['asks'][0][0]);  // device to short (red)
-        bestBid = parseFloat(data['bids'][0][0]); // device to long (green)
-        spread = (bestAsk - bestBid).toFixed(2);
+        if (typeof data['asks'] !== 'undefined' && typeof data['bids'] !== 'undefined') {
+            bestAsk = parseFloat(data['asks'][0][0]);  // device to short (red)
+            bestBid = parseFloat(data['bids'][0][0]); // device to long (green)
+            spread = (bestAsk - bestBid).toFixed(2);
+        }
     };
 
     this.gdax_public.getProductOrderBook({'level': 1}, result);

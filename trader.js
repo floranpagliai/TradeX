@@ -84,7 +84,7 @@ function closePosition() {
                 activeTrade.closingOrderId = data['id'];
             }
         });
-    } else if (type == 'SHORT') {
+    } else if (activeTrade.side == 'SHORT') {
 
     }
 }
@@ -144,7 +144,7 @@ function updateActiveTrade() {
                         if (price != bestPrice) {
                             exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
                             });
-                            openPosition();
+                            openPosition(activeTrade.side);
                         }
                     } else {
                         exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
