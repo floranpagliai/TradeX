@@ -66,7 +66,7 @@ function openPosition(side) {
                     activeTrade.price = data['price'];
                     activeTrade.size = data['size'];
                 } else {
-                    activeTrade = new Trade(exchange.product, data['id'], 'LONG', size, price);
+                    activeTrade = new Trade(exchange.product, 'LONG', size, price, data['id']);
                 }
             }
         });
@@ -101,18 +101,20 @@ function trade() {
     openPosition(advice);
     if (advice == 'LONG' || advice == 'SHORT') {
         logger.log(quoteCurrencyAccount.available + 'eur');
-        logger.log(baseCurrencyAccount.available + 'btc or ' + baseCurrencyAccount.available * exchange.getBestAsk + 'eur');
+        logger.log(baseCurrencyAccount.available + 'btc or ' + (baseCurrencyAccount.available * exchange.getBestAsk) + 'eur');
     }
     updateTrailingLoss();
 }
 
 function updateTrailingLoss() {
     if (activeTrade !== null && activeTrade.openingOrderStatus === 'DONE') {
+        logger.log('Enter in update trailing loss');
         let averageRange = 0;
         tulind.indicators.atr.indicator([productRates.highPrices, productRates.lowPrices, productRates.closePrices], [config.trade.trailing_loss.interval], function (err, results) {
             averageRange = results[0][results[0].length - 1];
         });
         if (activeTrade.side == 'LONG') {
+            logger.log('activeTrade.side == LONG');
             let trailingPrice = productRates.lastLowPrice - (averageRange * config.trade.trailing_loss.weight);
             if (activeTrade.trailingLoss < trailingPrice) {
                 logger.log('Set trailing loss to ' + trailingPrice);
@@ -131,6 +133,7 @@ function updateActiveTrade() {
     if (activeTrade !== null) {
         if (activeTrade.openingOrderStatus !== 'DONE') {
             exchange.getOrder(activeTrade.openingOrderId, function (err, response, data) {
+                logger.log(JSON.stringify(data));
                 let status = data['status'];
                 let price = parseFloat(data['price']).toFixed(2);
                 if (status == 'done') {
