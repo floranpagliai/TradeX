@@ -196,6 +196,7 @@ function updateActiveTrade() {
 MACD.init();
 exchange.init();
 activeTrade = new Trade(exchange.product, 'LONG', 0.03, 2120.07, 'test');
+activeTrade.openingOrderStatus = 'DONE';
 new CronJob('*/5 * * * * *', function () {
     exchange.getBestOrders();
     updateActiveTrade();
