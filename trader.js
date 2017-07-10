@@ -113,7 +113,6 @@ function updateTrailingLoss() {
             averageRange = results[0][results[0].length - 1];
         });
         if (activeTrade.side == 'LONG') {
-            logger.log('activeTrade.side == LONG');
             let trailingPrice = productRates.lastLowPrice - (averageRange * config.trade.trailing_loss.weight);
             if (activeTrade.trailingLoss < trailingPrice) {
                 logger.log('Set trailing loss to ' + trailingPrice);

@@ -115,17 +115,19 @@ method.getOrder = function (orderId, callback) {
 };
 
 method.getBestBuyingPrice = function() {
+    let res = parseFloat(bestBid - products[this.product].quote_increment);
     if (spread == products[this.product].quote_increment) {
-        return (bestAsk - spread).toFixed(2)
+        res = parseFloat(bestBid - spread);
     }
-    return (bestAsk - products[this.product].quote_increment).toFixed(2);
+    return res.toFixed(2);
 };
 
 method.getBestSellingPrice = function() {
+    let res = parseFloat(bestBid + products[this.product].quote_increment);
     if (spread == products[this.product].quote_increment) {
-        return (bestBid + spread).toFixed(2)
+        res = parseFloat(bestBid + spread);
     }
-    return (bestBid + products[this.product].quote_increment).toFixed(2);
+    return res.toFixed(2);
 };
 
 method.getBestBid = function () {
