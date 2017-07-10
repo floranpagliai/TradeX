@@ -66,7 +66,7 @@ function openPosition(side) {
                     activeTrade.price = data['price'];
                     activeTrade.size = data['size'];
                 } else {
-                    activeTrade = new Trade(exchange.product, 'LONG', size, price, data['id']);
+                    activeTrade = new Trade(exchange.product, 'LONG', size, data['price'], data['id']);
                 }
             }
         });
@@ -131,6 +131,7 @@ function updateTrailingLoss() {
 
 function updateActiveTrade() {
     if (activeTrade !== null) {
+        logger.log('opening order status = ' + activeTrade.openingOrderStatus);
         if (activeTrade.openingOrderStatus !== 'DONE') {
             exchange.getOrder(activeTrade.openingOrderId, function (err, response, data) {
                 logger.log(JSON.stringify(data));
@@ -194,6 +195,7 @@ function updateActiveTrade() {
 
 MACD.init();
 exchange.init();
+activeTrade = new Trade(exchange.product, 'LONG', 0.03, 2120.07, 'test');
 new CronJob('*/5 * * * * *', function () {
     exchange.getBestOrders();
     updateActiveTrade();
