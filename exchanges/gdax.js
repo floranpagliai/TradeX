@@ -92,7 +92,7 @@ method.sell = function (size, callback) {
     };
 
     // baseCurrencyAccount.available > products[this.product].base_min_size
-    if (price > 0) {
+    if (params.price > 0) {
         this.gdax.sell(params, result);
         logger.log('Sell ' + params.size + ' at ' + params.price + ' (bestAsk=' + bestAsk + ', bestBid=' + bestBid + ')');
     }
