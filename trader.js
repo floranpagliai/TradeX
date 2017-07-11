@@ -77,7 +77,7 @@ function openPosition(side) {
 
 function closePosition() {
     if (activeTrade.side == 'LONG') {
-        let size = quoteCurrencyAccount.available;
+        let size = baseCurrencyAccount.available;
         exchange.sell(size, function (err, response, data) {
             if (typeof data['id'] !== 'undefined') {
                 // use watch to re execute order if canceled and same trend
@@ -194,12 +194,12 @@ MACD.init();
 exchange.init();
 new CronJob('*/5 * * * * *', function () {
     exchange.getBestOrders();
-    updateActiveTrade();
 }, null, true);
 
 new CronJob('*/15 * * * * *', function () {
     exchange.getAccounts(accountsCallback);
     exchange.getHistoricRates(historicRatesCallback);
+    updateActiveTrade();
 }, null, true);
 
 
