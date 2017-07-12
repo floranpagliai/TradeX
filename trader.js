@@ -124,6 +124,18 @@ function updateTrailingLoss() {
             }
         }
     }
+    if (activeTrade.trailingLoss !== null) {
+        if ((activeTrade.side == 'LONG' && exchange.getBestBid() < activeTrade.trailingLoss) || (activeTrade.side == 'SHORT' && exchange.getBestAsk() > activeTrade.trailingLoss)) {
+            logger.log('Activate stop loss ' + activeTrade.trailingLoss);
+            if (activeTrade.openingOrderStatus !== 'DONE') {
+                exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
+                    activeTrade = null;
+                });
+            } else {
+                closePosition();
+            }
+        }
+    }
 }
 
 function updateActiveTrade() {
@@ -174,18 +186,6 @@ function updateActiveTrade() {
                 }
             });
         }
-        if (activeTrade.trailingLoss !== null) {
-            if ((activeTrade.side == 'LONG' && exchange.getBestBid() < activeTrade.trailingLoss) || (activeTrade.side == 'SHORT' && exchange.getBestAsk() > activeTrade.trailingLoss)) {
-                logger.log('Activate stop loss ' + activeTrade.trailingLoss);
-                if (activeTrade.openingOrderStatus !== 'DONE') {
-                    exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
-                        activeTrade = null;
-                    });
-                } else {
-                    closePosition();
-                }
-            }
-        }
     }
 }
 
@@ -198,9 +198,6 @@ new CronJob('*/5 * * * * *', function () {
 new CronJob('*/15 * * * * *', function () {
     exchange.getAccounts(accountsCallback);
     exchange.getHistoricRates(historicRatesCallback);
-}, null, true);
-
-new CronJob('0 * * * * *', function () {
     updateActiveTrade();
 }, null, true);
 
