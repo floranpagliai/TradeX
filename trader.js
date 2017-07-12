@@ -132,7 +132,7 @@ function updateTrailingLoss() {
                     exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
                         activeTrade = null;
                     });
-                } else {
+                } else if(activeTrade.closingOrderId == null) {
                     closePosition();
                 }
             }
@@ -155,6 +155,7 @@ function updateActiveTrade() {
                         if (price != bestPrice) {
                             exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
                             });
+                            //TODO : open position if cancel succeed and use previous size
                             openPosition(activeTrade.side);
                         }
                     } else {
@@ -200,6 +201,9 @@ new CronJob('*/5 * * * * *', function () {
 new CronJob('*/15 * * * * *', function () {
     exchange.getAccounts(accountsCallback);
     exchange.getHistoricRates(historicRatesCallback);
+}, null, true);
+
+new CronJob('0 * * * * *', function () {
     updateActiveTrade();
 }, null, true);
 
