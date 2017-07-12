@@ -45,7 +45,8 @@ let historicRatesCallback = function (err, response, data) {
     }
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
     if (lastTime === null) {
-        MACD.advice(closePrices.pop());
+        closePrices.pop();
+        MACD.advice(closePrices);
     }
     trade();
 };
