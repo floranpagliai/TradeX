@@ -80,7 +80,6 @@ function closePosition() {
         let size = baseCurrencyAccount.available;
         exchange.sell(size, function (err, response, data) {
             if (typeof data['id'] !== 'undefined') {
-                // use watch to re execute order if canceled and same trend
                 activeTrade.closingOrderId = data['id'];
             }
         });
@@ -199,6 +198,9 @@ new CronJob('*/5 * * * * *', function () {
 new CronJob('*/15 * * * * *', function () {
     exchange.getAccounts(accountsCallback);
     exchange.getHistoricRates(historicRatesCallback);
+}, null, true);
+
+new CronJob('0 * * * * *', function () {
     updateActiveTrade();
 }, null, true);
 
