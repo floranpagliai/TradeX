@@ -45,8 +45,7 @@ let historicRatesCallback = function (err, response, data) {
     }
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
     if (lastTime === null) {
-        MACD.advice(closePrices);
-        // TODO : Remove last value
+        MACD.advice(closePrices.pop());
     }
     trade();
 };
@@ -106,33 +105,35 @@ function trade() {
 }
 
 function updateTrailingLoss() {
-    if (activeTrade !== null && activeTrade.openingOrderStatus === 'DONE') {
-        let averageRange = 0;
-        tulind.indicators.atr.indicator([productRates.highPrices, productRates.lowPrices, productRates.closePrices], [config.trade.trailing_loss.interval], function (err, results) {
-            averageRange = results[0][results[0].length - 1];
-        });
-        if (activeTrade.side == 'LONG') {
-            let trailingPrice = productRates.lastLowPrice - (averageRange * config.trade.trailing_loss.weight);
-            if (activeTrade.trailingLoss < trailingPrice) {
-                logger.log('Set trailing loss to ' + trailingPrice);
-                activeTrade.trailingLoss = trailingPrice;
-            }
-        } else if (activeTrade.side == 'SHORT') {
-            let trailingPrice = productRates.lastHighPrice + (averageRange * config.trade.trailing_loss.weight);
-            if (activeTrade.trailingLoss > trailingPrice) {
-                activeTrade.trailingLoss = trailingPrice;
+    if (activeTrade !== null) {
+        if (activeTrade.openingOrderStatus === 'DONE') {
+            let averageRange = 0;
+            tulind.indicators.atr.indicator([productRates.highPrices, productRates.lowPrices, productRates.closePrices], [config.trade.trailing_loss.interval], function (err, results) {
+                averageRange = results[0][results[0].length - 1];
+            });
+            if (activeTrade.side == 'LONG') {
+                let trailingPrice = productRates.lastLowPrice - (averageRange * config.trade.trailing_loss.weight);
+                if (activeTrade.trailingLoss < trailingPrice) {
+                    logger.log('Set trailing loss to ' + trailingPrice);
+                    activeTrade.trailingLoss = trailingPrice;
+                }
+            } else if (activeTrade.side == 'SHORT') {
+                let trailingPrice = productRates.lastHighPrice + (averageRange * config.trade.trailing_loss.weight);
+                if (activeTrade.trailingLoss > trailingPrice) {
+                    activeTrade.trailingLoss = trailingPrice;
+                }
             }
         }
-    }
-    if (activeTrade.trailingLoss !== null) {
-        if ((activeTrade.side == 'LONG' && exchange.getBestBid() < activeTrade.trailingLoss) || (activeTrade.side == 'SHORT' && exchange.getBestAsk() > activeTrade.trailingLoss)) {
-            logger.log('Activate stop loss ' + activeTrade.trailingLoss);
-            if (activeTrade.openingOrderStatus !== 'DONE') {
-                exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
-                    activeTrade = null;
-                });
-            } else {
-                closePosition();
+        if (activeTrade.trailingLoss !== null) {
+            if ((activeTrade.side == 'LONG' && exchange.getBestBid() < activeTrade.trailingLoss) || (activeTrade.side == 'SHORT' && exchange.getBestAsk() > activeTrade.trailingLoss)) {
+                logger.log('Activate stop loss ' + activeTrade.trailingLoss);
+                if (activeTrade.openingOrderStatus !== 'DONE') {
+                    exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
+                        activeTrade = null;
+                    });
+                } else {
+                    closePosition();
+                }
             }
         }
     }
