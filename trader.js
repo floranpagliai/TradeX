@@ -167,7 +167,7 @@ function updateActiveTrade() {
                     if (price != bestPrice) {
                         exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
                         });
-                        closePosition();
+                        // closePosition();
                     }
                     // } else {
                     //     // Trend revert
