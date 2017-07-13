@@ -182,6 +182,8 @@ function updateActiveTrade() {
 
 advisor.init();
 exchange.init();
+activeTrade = new Trade(exchange.product, 'LONG', 0.03, 2055.42, "aedae");
+activeTrade.openingOrderStatus = 'DONE';
 new CronJob('*/15 * * * * *', function () {
     exchange.update();
     exchange.getHistoricRates(historicRatesCallback);
