@@ -55,24 +55,26 @@ function openPosition(side) {
                     activeTrade.price = data['price'];
                     activeTrade.size = data['size'];
                 } else {
-                    activeTrade = new Trade(exchange.product, 'LONG', size, data['price'], data['id']);
+                    activeTrade = new Trade(exchange.product, 'LONG', data['size'], data['price'], data['id']);
                 }
             }
         });
     } else if (side == 'SHORT') {
-
+        // TODO : implement margin trading
     }
 }
 
 function closePosition(side) {
-    if (side == 'SHORT' && activeTrade.side == 'LONG') {
-        exchange.sell({}, function (err, response, data) {
-            if (typeof data['id'] !== 'undefined') {
-                activeTrade.closingOrderId = data['id'];
-            }
-        });
-    } else if (side == 'LONG' && activeTrade.side == 'SHORT') {
-
+    if (activeTrade != null) {
+        if (side == 'SHORT' && activeTrade.side == 'LONG') {
+            exchange.sell({}, function (err, response, data) {
+                if (typeof data['id'] !== 'undefined') {
+                    activeTrade.closingOrderId = data['id'];
+                }
+            });
+        } else if (side == 'LONG' && activeTrade.side == 'SHORT') {
+            // TODO : implement margin trading closing
+        }
     }
 }
 
@@ -189,6 +191,8 @@ new CronJob('0 * * * * *', function () {
     updateActiveTrade();
 }, null, true);
 
+// TODO : save active trade with local json storage
+// TODO : backtest
 
 // let express = require('express');
 //
