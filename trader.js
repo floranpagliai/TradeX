@@ -7,14 +7,12 @@ const Account = require('./models/Account.js');
 const ProductRates = require('./models/ProductRates.js');
 const Trade = require('./models/Trade.js');
 let config = require("./config.js");
-let MACD = require('./strategies/MACD');
-let ao = require('./strategies/AwesomeOscillator');
+let advisor = require('./strategies/Advisor');
 let exchange = require("./exchanges/gdax");
 
 let productRates = [];
 let lastTime = null;
 let activeTrade = null;
-
 
 let historicRatesCallback = function (err, response, data) {
     if (typeof data === 'undefined' || productRates.lastTime >= data[0][0]) {
@@ -34,14 +32,16 @@ let historicRatesCallback = function (err, response, data) {
         openPrices.push(data[i][3]);
         closePrices.push(data[i][4]);
         volumes.push(data[i][5]);
+        // console.log(dateFormat(new Date(data[i][0] * 1000)) + advisor.advice(lowPrices, highPrices, openPrices, closePrices, volumes))
     }
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
     if (lastTime === null) {
-        closePrices.pop();
-        highPrices.pop();
         lowPrices.pop();
-        MACD.advice(closePrices);
-        ao.advice(highPrices, lowPrices);
+        highPrices.pop();
+        openPrices.pop();
+        closePrices.pop();
+        volumes.pop();
+        advisor.advice(lowPrices, highPrices, openPrices, closePrices, volumes);
     }
     trade();
 };
@@ -64,14 +64,14 @@ function openPosition(side) {
     }
 }
 
-function closePosition() {
-    if (activeTrade.side == 'LONG') {
+function closePosition(side) {
+    if (side == 'SHORT' && activeTrade.side == 'LONG') {
         exchange.sell({}, function (err, response, data) {
             if (typeof data['id'] !== 'undefined') {
                 activeTrade.closingOrderId = data['id'];
             }
         });
-    } else if (activeTrade.side == 'SHORT') {
+    } else if (side == 'LONG' && activeTrade.side == 'SHORT') {
 
     }
 }
@@ -83,18 +83,9 @@ function trade() {
     lastTime = productRates.lastTime;
     let tickDateStart = dateFormat(new Date((lastTime - config.trade.interval) * 1000), "HH:MM");
     let tickDateEnd = dateFormat(new Date(lastTime * 1000), "HH:MM");
-    MACD.advice(productRates.closePrices);
-    ao.advice(productRates.highPrices, productRates.lowPrices);
-    let advice = 'WAIT';
-    if (MACD.trend.side == ao.trend.side && MACD.trend.adviced && ao.trend.adviced) {
-        if (activeTrade == null) {
-            advice = MACD.trend.side;
-            openPosition(MACD.trend.side);
-        } else if (activeTrade.side != MACD.trend.side) {
-            advice = MACD.trend.side;
-            closePosition(MACD.trend.side);
-        }
-    }
+    let advice = advisor.advice(productRates.lowPrices, productRates.highPrices, productRates.openPrices, productRates.closePrices, productRates.volumes);
+    openPosition(advice);
+    closePosition(advice);
     logger.log(tickDateStart + ' to ' + tickDateEnd + ' ' + advice);
     updateTrailingLoss();
 }
@@ -143,7 +134,7 @@ function updateActiveTrade() {
                 if (status == 'done') {
                     activeTrade.openingOrderStatus = 'DONE';
                 } else {
-                    if (activeTrade.side == MACD.trend.side) {
+                    if (activeTrade.side == advisor.trend.side) {
                         let bestPrice = activeTrade.side == 'LONG' ? exchange.getBestSellingPrice() : exchange.getBestBuyingPrice();
                         if (price != bestPrice) {
                             exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
@@ -169,7 +160,7 @@ function updateActiveTrade() {
                     activeTrade.closingOrderStatus = 'DONE'; // Useless for now
                     activeTrade = null;
                 } else {
-                    // if (activeTrade.side != MACD.trend.side) {
+                    // if (activeTrade.side != advisor.trend.side) {
                     let bestPrice = activeTrade.side == 'LONG' ? exchange.getBestSellingPrice() : exchange.getBestBuyingPrice();
                     if (price != bestPrice) {
                         exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
@@ -187,8 +178,7 @@ function updateActiveTrade() {
     }
 }
 
-MACD.init();
-ao.init();
+advisor.init();
 exchange.init();
 new CronJob('*/15 * * * * *', function () {
     exchange.update();
