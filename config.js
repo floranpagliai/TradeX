@@ -20,6 +20,15 @@ config.advisor = {
             // before we consider it real?
             persistence: 1
         }
+    },
+    awesome_oscillator: {
+        thresholds: {
+            down: 0,
+            up: 0,
+            // How many candle intervals should a trend persist
+            // before we consider it real?
+            persistence: 1
+        }
     }
 };
 
@@ -29,7 +38,7 @@ config.trade = {
     interval: 300,
     trailing_loss: {
         interval: 14,
-        weight: 1.9
+        weight: 2.9
     }
 };
 

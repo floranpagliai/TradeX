@@ -1,4 +1,3 @@
-let Gdax = require('gdax');
 let dateFormat = require('dateformat');
 let tulind = require('tulind');
 let CronJob = require('cron').CronJob;
@@ -9,12 +8,8 @@ const ProductRates = require('./models/ProductRates.js');
 const Trade = require('./models/Trade.js');
 let config = require("./config.js");
 let MACD = require('./strategies/MACD');
+let ao = require('./strategies/AwesomeOscillator');
 let exchange = require("./exchanges/gdax");
-
-
-// Init accounts
-let baseCurrencyAccount = new Account(0, config.trade.base_currency, 0, 0, 0);
-let quoteCurrencyAccount = new Account(0, config.trade.quote_currency, 0, 0, 0);
 
 let productRates = [];
 let lastTime = null;
@@ -22,10 +17,7 @@ let activeTrade = null;
 
 
 let historicRatesCallback = function (err, response, data) {
-    if (!data instanceof Array) {
-        logger.log('[ERROR] tradeCallback data is not array');
-    }
-    if (typeof data[0] === 'undefined' || productRates.lastTime >= data[0][0]) {
+    if (typeof data === 'undefined' || productRates.lastTime >= data[0][0]) {
         return null;
     }
     data.reverse();
@@ -46,20 +38,17 @@ let historicRatesCallback = function (err, response, data) {
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
     if (lastTime === null) {
         closePrices.pop();
+        highPrices.pop();
+        lowPrices.pop();
         MACD.advice(closePrices);
+        ao.advice(highPrices, lowPrices);
     }
     trade();
 };
 
-let accountsCallback = function (quoteCurrencyData, baseCurrencyData) {
-    quoteCurrencyAccount.update(quoteCurrencyData['balance'], quoteCurrencyData['available'], quoteCurrencyData['hold']);
-    baseCurrencyAccount.update(baseCurrencyData['balance'], baseCurrencyData['available'], baseCurrencyData['hold']);
-};
-
 function openPosition(side) {
     if (side == 'LONG') {
-        let size = Math.floor(quoteCurrencyAccount.available / exchange.getBestBuyingPrice() * 100) / 100;
-        exchange.buy(size, function (err, response, data) {
+        exchange.buy({}, function (err, response, data) {
             if (typeof data['id'] !== 'undefined') {
                 if (activeTrade !== null) {
                     activeTrade.openingOrderId = data['id'];
@@ -77,8 +66,7 @@ function openPosition(side) {
 
 function closePosition() {
     if (activeTrade.side == 'LONG') {
-        let size = baseCurrencyAccount.available;
-        exchange.sell(size, function (err, response, data) {
+        exchange.sell({}, function (err, response, data) {
             if (typeof data['id'] !== 'undefined') {
                 activeTrade.closingOrderId = data['id'];
             }
@@ -95,13 +83,19 @@ function trade() {
     lastTime = productRates.lastTime;
     let tickDateStart = dateFormat(new Date((lastTime - config.trade.interval) * 1000), "HH:MM");
     let tickDateEnd = dateFormat(new Date(lastTime * 1000), "HH:MM");
-    let advice = MACD.advice(productRates.closePrices);
-    logger.log(tickDateStart + ' to ' + tickDateEnd + ' ' + advice);
-    openPosition(advice);
-    if (advice == 'LONG' || advice == 'SHORT') {
-        logger.log(quoteCurrencyAccount.available + 'eur');
-        logger.log(baseCurrencyAccount.available + 'btc or ' + (baseCurrencyAccount.available * exchange.getBestAsk) + 'eur');
+    MACD.advice(productRates.closePrices);
+    ao.advice(productRates.highPrices, productRates.lowPrices);
+    let advice = 'WAIT';
+    if (MACD.trend.side == ao.trend.side && MACD.trend.adviced && ao.trend.adviced) {
+        if (activeTrade == null) {
+            advice = MACD.trend.side;
+            openPosition(MACD.trend.side);
+        } else if (activeTrade.side != MACD.trend.side) {
+            advice = MACD.trend.side;
+            closePosition(MACD.trend.side);
+        }
     }
+    logger.log(tickDateStart + ' to ' + tickDateEnd + ' ' + advice);
     updateTrailingLoss();
 }
 
@@ -132,7 +126,7 @@ function updateTrailingLoss() {
                     exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
                         activeTrade = null;
                     });
-                } else if(activeTrade.closingOrderId == null) {
+                } else if (activeTrade.closingOrderId == null) {
                     closePosition();
                 }
             }
@@ -144,7 +138,6 @@ function updateActiveTrade() {
     if (activeTrade !== null) {
         if (activeTrade.openingOrderStatus !== 'DONE') {
             exchange.getOrder(activeTrade.openingOrderId, function (err, response, data) {
-                logger.log(JSON.stringify(data));
                 let status = data['status'];
                 let price = parseFloat(data['price']).toFixed(2);
                 if (status == 'done') {
@@ -154,6 +147,8 @@ function updateActiveTrade() {
                         let bestPrice = activeTrade.side == 'LONG' ? exchange.getBestSellingPrice() : exchange.getBestBuyingPrice();
                         if (price != bestPrice) {
                             exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
+                                logger.log(JSON.stringify(data));
+
                             });
                             //TODO : open position if cancel succeed and use previous size
                             openPosition(activeTrade.side);
@@ -193,13 +188,10 @@ function updateActiveTrade() {
 }
 
 MACD.init();
+ao.init();
 exchange.init();
-new CronJob('*/5 * * * * *', function () {
-    exchange.getBestOrders();
-}, null, true);
-
 new CronJob('*/15 * * * * *', function () {
-    exchange.getAccounts(accountsCallback);
+    exchange.update();
     exchange.getHistoricRates(historicRatesCallback);
 }, null, true);
 

@@ -1,11 +1,14 @@
 let Gdax = require('gdax');
 let logger = require('../core/Logger.js');
+const Account = require('../models/Account.js');
 let config = require("../config.js");
 let products = require("./products").gdax;
 
 let bestBid = 0;
 let bestAsk = 0;
 let spread = 0;
+let baseCurrencyAccount = null;
+let quoteCurrencyAccount = null;
 
 let method = {};
 
@@ -18,8 +21,19 @@ method.init = function () {
 
     this.product = [config.trade.base_currency, config.trade.quote_currency].join('-').toUpperCase();
 
+    baseCurrencyAccount = new Account(0, config.trade.base_currency, 0, 0, 0);
+    quoteCurrencyAccount = new Account(0, config.trade.quote_currency, 0, 0, 0);
+
     this.gdax_public = new Gdax.PublicClient(this.product, this.use_sandbox ? 'https://api-public.sandbox.gdax.com' : undefined);
     this.gdax = new Gdax.AuthenticatedClient(this.key, this.secret, this.passphrase, this.use_sandbox ? 'https://api-public.sandbox.gdax.com' : undefined);
+};
+
+method.update = function () {
+    this.getBestOrders();
+    this.getAccounts(function (quoteCurrencyData, baseCurrencyData) {
+        quoteCurrencyAccount.update(quoteCurrencyData['balance'], quoteCurrencyData['available'], quoteCurrencyData['hold']);
+        baseCurrencyAccount.update(baseCurrencyData['balance'], baseCurrencyData['available'], baseCurrencyData['hold']);
+    });
 };
 
 method.getHistoricRates = function (callback) {
@@ -44,6 +58,9 @@ method.getBestOrders = function () {
 
 method.getAccounts = function (callback) {
     let result = function (err, response, data) {
+        if (typeof data === 'undefined') {
+            return null;
+        }
         let quoteCurrencyAccount = null;
         let baseCurrencyAccount = null;
         for (let account of data) {
@@ -59,7 +76,8 @@ method.getAccounts = function (callback) {
     this.gdax.getAccounts(result);
 };
 
-method.buy = function (size, callback) {
+method.buy = function (parameters, callback) {
+    let size = parameters.size !== undefined ? parameters.size : Math.floor(quoteCurrencyAccount.available / this.getBestBuyingPrice() * 100) / 100;
     let result = function (err, response, data) {
         callback(err, response, data)
     };
@@ -71,14 +89,14 @@ method.buy = function (size, callback) {
         'cancel_after': 'hour',
         'post_only': true // TODO ; config
     };
-    // quoteCurrencyAccount.available > price * products[this.product].base_min_size
-    if (params.price > 0) {
+    if (params.price > 0 && quoteCurrencyAccount.available > params.price * products[this.product].base_min_size) {
         this.gdax.buy(params, result);
         logger.log('Buy ' + params.size + ' at ' + params.price + ' (bestAsk=' + bestAsk + ', bestBid=' + bestBid + ')');
     }
 };
 
-method.sell = function (size, callback) {
+method.sell = function (parameters, callback) {
+    let size = parameters.size !== undefined ? parameters.size : baseCurrencyAccount.available;
     let result = function (err, response, data) {
         callback(err, response, data)
     };
@@ -91,8 +109,7 @@ method.sell = function (size, callback) {
         'post_only': true // TODO ; config
     };
 
-    // baseCurrencyAccount.available > products[this.product].base_min_size
-    if (params.price > 0) {
+    if (params.price > 0 && baseCurrencyAccount.available > products[this.product].base_min_size) {
         this.gdax.sell(params, result);
         logger.log('Sell ' + params.size + ' at ' + params.price + ' (bestAsk=' + bestAsk + ', bestBid=' + bestBid + ')');
     }
