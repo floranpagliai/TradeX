@@ -86,9 +86,9 @@ function trade() {
     let tickDateStart = dateFormat(new Date((lastTime - config.trade.interval) * 1000), "HH:MM");
     let tickDateEnd = dateFormat(new Date(lastTime * 1000), "HH:MM");
     let advice = advisor.advice(productRates.lowPrices, productRates.highPrices, productRates.openPrices, productRates.closePrices, productRates.volumes);
+    logger.log(tickDateStart + ' to ' + tickDateEnd + ' ' + advice);
     openPosition(advice);
     closePosition(advice);
-    logger.log(tickDateStart + ' to ' + tickDateEnd + ' ' + advice);
     updateTrailingLoss();
 }
 
@@ -120,7 +120,7 @@ function updateTrailingLoss() {
                         activeTrade = null;
                     });
                 } else if (activeTrade.closingOrderId == null) {
-                    closePosition();
+                    // closePosition();
                 }
             }
         }
@@ -182,8 +182,6 @@ function updateActiveTrade() {
 
 advisor.init();
 exchange.init();
-activeTrade = new Trade(exchange.product, 'LONG', 0.03, 2055.42, "aedae");
-activeTrade.openingOrderStatus = 'DONE';
 new CronJob('*/15 * * * * *', function () {
     exchange.update();
     exchange.getHistoricRates(historicRatesCallback);
