@@ -140,16 +140,16 @@ function updateActiveTrade() {
                         let bestPrice = activeTrade.side == 'LONG' ? exchange.getBestSellingPrice() : exchange.getBestBuyingPrice();
                         if (price != bestPrice) {
                             exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
-                                logger.log(JSON.stringify(data));
+                                logger.log('Cancel order : ' + JSON.stringify(data));
+                                //TODO : open position if cancel succeed and use previous size
+                                openPosition(activeTrade.side);
 
                             });
-                            //TODO : open position if cancel succeed and use previous size
-                            openPosition(activeTrade.side);
                         }
                     } else {
                         exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
+                            activeTrade = null;
                         });
-                        activeTrade = null;
                     }
                 }
             });
