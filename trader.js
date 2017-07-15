@@ -41,12 +41,13 @@ let historicRatesCallback = function (err, response, data) {
         openPrices.pop();
         closePrices.pop();
         volumes.pop();
-        advisor.advice(lowPrices, highPrices, openPrices, closePrices, volumes);
+        // advisor.advice(lowPrices, highPrices, openPrices, closePrices, volumes);
     }
     trade();
 };
 
 function openPosition(side) {
+    exchange.update();
     if (side == 'LONG') {
         exchange.buy({}, function (err, response, data) {
             if (typeof data['id'] !== 'undefined') {
@@ -65,6 +66,7 @@ function openPosition(side) {
 }
 
 function closePosition(side) {
+    exchange.update();
     if (activeTrade != null) {
         if (side == 'SHORT' && activeTrade.side == 'LONG') {
             exchange.sell({}, function (err, response, data) {
