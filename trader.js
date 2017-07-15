@@ -143,8 +143,10 @@ function updateActiveTrade() {
                         if (price != bestPrice) {
                             exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
                                 logger.log('Cancel order : ' + JSON.stringify(data));
+                                logger.log(typeof data['message']);
+                                // openPosition(activeTrade.side, activeTrade.size);
                                 //TODO : open position if cancel succeed and use previous size
-                                if (typeof data['message'] === 'undefined') {
+                                if (typeof data[0] == activeTrade.openingOrderId) {
                                     openPosition(activeTrade.side, activeTrade.size);
                                 }
                             });
@@ -170,7 +172,7 @@ function updateActiveTrade() {
                     if (price != bestPrice) {
                         exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
                             logger.log('Cancel order closing : ' + JSON.stringify(data));
-                            if (typeof data['message'] === 'undefined') {
+                            if (typeof data[0] == activeTrade.closingOrderId) {
                                 closePosition(activeTrade.side, activeTrade.size);
                             }
                         });
