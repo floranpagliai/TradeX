@@ -46,10 +46,10 @@ let historicRatesCallback = function (err, response, data) {
     trade();
 };
 
-function openPosition(side) {
-    exchange.update();
+function openPosition(side, size) {
+    size = typeof size === 'undefined' ? 0 : size;
     if (side == 'LONG') {
-        exchange.buy({}, function (err, response, data) {
+        exchange.buy({size: size}, function (err, response, data) {
             if (typeof data['id'] !== 'undefined') {
                 if (activeTrade !== null) {
                     activeTrade.openingOrderId = data['id'];
@@ -65,11 +65,12 @@ function openPosition(side) {
     }
 }
 
-function closePosition(side) {
+function closePosition(side, size) {
     exchange.update();
+    size = typeof size === 'undefined' ? 0 : size;
     if (activeTrade != null) {
         if (side == 'SHORT' && activeTrade.side == 'LONG') {
-            exchange.sell({}, function (err, response, data) {
+            exchange.sell({size: size}, function (err, response, data) {
                 if (typeof data['id'] !== 'undefined') {
                     activeTrade.closingOrderId = data['id'];
                 }
@@ -145,7 +146,7 @@ function updateActiveTrade() {
                                 logger.log('Cancel order : ' + JSON.stringify(data));
                                 //TODO : open position if cancel succeed and use previous size
                                 if (typeof data['message'] === 'undefined') {
-                                    openPosition(activeTrade.side);
+                                    openPosition(activeTrade.side, activeTrade.size);
                                 }
                             });
                         }
@@ -171,7 +172,7 @@ function updateActiveTrade() {
                         exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
                             logger.log('Cancel order closing : ' + JSON.stringify(data));
                             if (typeof data['message'] === 'undefined') {
-                                closePosition(activeTrade.side);
+                                closePosition(activeTrade.side, activeTrade.size);
                             }
                         });
                     }
