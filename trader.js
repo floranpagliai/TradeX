@@ -66,7 +66,6 @@ function openPosition(side, size) {
 }
 
 function closePosition(side, size) {
-    exchange.update();
     size = typeof size === 'undefined' ? 0 : size;
     if (activeTrade != null) {
         if (side == 'SHORT' && activeTrade.side == 'LONG') {
@@ -189,6 +188,7 @@ function updateActiveTrade() {
 
 advisor.init();
 exchange.init();
+exchange.update();
 new CronJob('*/15 * * * * *', function () {
     exchange.update();
     exchange.getHistoricRates(historicRatesCallback);
