@@ -21,15 +21,15 @@ method.init = function () {
 
     this.product = [config.trade.base_currency, config.trade.quote_currency].join('-').toUpperCase();
 
+    this.gdax_public = new Gdax.PublicClient(this.product, this.use_sandbox ? 'https://api-public.sandbox.gdax.com' : undefined);
+    this.gdax = new Gdax.AuthenticatedClient(this.key, this.secret, this.passphrase, this.use_sandbox ? 'https://api-public.sandbox.gdax.com' : undefined);
+
     baseCurrencyAccount = new Account(0, config.trade.base_currency, 0, 0, 0);
     quoteCurrencyAccount = new Account(0, config.trade.quote_currency, 0, 0, 0);
     this.getAccounts(function (quoteCurrencyData, baseCurrencyData) {
         quoteCurrencyAccount.update(quoteCurrencyData['balance'], quoteCurrencyData['available'], quoteCurrencyData['hold']);
         baseCurrencyAccount.update(baseCurrencyData['balance'], baseCurrencyData['available'], baseCurrencyData['hold']);
     });
-
-    this.gdax_public = new Gdax.PublicClient(this.product, this.use_sandbox ? 'https://api-public.sandbox.gdax.com' : undefined);
-    this.gdax = new Gdax.AuthenticatedClient(this.key, this.secret, this.passphrase, this.use_sandbox ? 'https://api-public.sandbox.gdax.com' : undefined);
 };
 
 method.update = function () {
