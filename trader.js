@@ -41,7 +41,7 @@ let historicRatesCallback = function (err, response, data) {
         openPrices.pop();
         closePrices.pop();
         volumes.pop();
-        // advisor.advice(lowPrices, highPrices, openPrices, closePrices, volumes);
+        advisor.advice(lowPrices, highPrices, openPrices, closePrices, volumes);
     }
     trade();
 };
@@ -170,7 +170,7 @@ function updateActiveTrade() {
                     // if (activeTrade.side != advisor.trend.side) {
                     let bestPrice = activeTrade.side == 'LONG' ? exchange.getBestSellingPrice() : exchange.getBestBuyingPrice();
                     if (price != bestPrice) {
-                        exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
+                        exchange.cancelOrder(activeTrade.closingOrderId, function (err, response, data) {
                             logger.log('Cancel order closing : ' + JSON.stringify(data));
                             if (data[0] == activeTrade.closingOrderId) {
                                 closePosition(activeTrade.side, activeTrade.size);
@@ -190,7 +190,6 @@ function updateActiveTrade() {
 
 advisor.init();
 exchange.init();
-exchange.update();
 new CronJob('*/15 * * * * *', function () {
     exchange.update();
     exchange.getHistoricRates(historicRatesCallback);
