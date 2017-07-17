@@ -41,7 +41,7 @@ let historicRatesCallback = function (err, response, data) {
         openPrices.pop();
         closePrices.pop();
         volumes.pop();
-        // advisor.advice(lowPrices, highPrices, openPrices, closePrices, volumes);
+        advisor.advice(lowPrices, highPrices, openPrices, closePrices, volumes);
     }
     trade();
 };
@@ -122,7 +122,7 @@ function updateTrailingLoss() {
                         activeTrade = null;
                     });
                 } else if (activeTrade.closingOrderId == null) {
-                    // closePosition();
+                    closePosition(activeTrade.side, activeTrade.size);
                 }
             }
         }
