@@ -41,7 +41,7 @@ let historicRatesCallback = function (err, response, data) {
         openPrices.pop();
         closePrices.pop();
         volumes.pop();
-        advisor.advice(lowPrices, highPrices, openPrices, closePrices, volumes);
+        // advisor.advice(lowPrices, highPrices, openPrices, closePrices, volumes);
     }
     trade();
 };
@@ -143,12 +143,7 @@ function updateActiveTrade() {
                         if (price != bestPrice) {
                             exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
                                 logger.log('Cancel order : ' + JSON.stringify(data));
-                                logger.log(typeof data['message']);
-                                // openPosition(activeTrade.side, activeTrade.size);
-                                //TODO : open position if cancel succeed and use previous size
-                                if (data[0] == activeTrade.openingOrderId) {
-                                    openPosition(activeTrade.side, activeTrade.size);
-                                }
+                                openPosition(activeTrade.side, activeTrade.size);
                             });
                         }
                     } else {
@@ -172,9 +167,7 @@ function updateActiveTrade() {
                     if (price != bestPrice) {
                         exchange.cancelOrder(activeTrade.closingOrderId, function (err, response, data) {
                             logger.log('Cancel order closing : ' + JSON.stringify(data));
-                            if (data[0] == activeTrade.closingOrderId) {
-                                closePosition(activeTrade.side, activeTrade.size);
-                            }
+                            closePosition(activeTrade.side, activeTrade.size);
                         });
                     }
                     // } else {
