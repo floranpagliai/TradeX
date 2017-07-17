@@ -186,7 +186,7 @@ exchange.init();
 new CronJob('*/15 * * * * *', function () {
     exchange.update();
     exchange.getHistoricRates(historicRatesCallback);
-}, null, false);
+}, null, true);
 
 new CronJob('0 * * * * *', function () {
     updateActiveTrade();

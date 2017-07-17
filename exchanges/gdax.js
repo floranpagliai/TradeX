@@ -33,11 +33,11 @@ method.init = function () {
 };
 
 method.update = function () {
-    this.getBestOrders();
     this.getAccounts(function (quoteCurrencyData, baseCurrencyData) {
         quoteCurrencyAccount.update(quoteCurrencyData['balance'], quoteCurrencyData['available'], quoteCurrencyData['hold']);
         baseCurrencyAccount.update(baseCurrencyData['balance'], baseCurrencyData['available'], baseCurrencyData['hold']);
     });
+    this.getBestOrders();
 };
 
 method.getHistoricRates = function (callback) {
@@ -96,6 +96,8 @@ method.buy = function (parameters, callback) {
     if (params.price > 0 && quoteCurrencyAccount.available > params.price * products[this.product].base_min_size) {
         this.gdax.buy(params, result);
         logger.log('Buy ' + params.size + ' at ' + params.price + ' (bestAsk=' + bestAsk + ', bestBid=' + bestBid + ')');
+    } else {
+        logger.log('Price is invalid or account have insufficient funds')
     }
 };
 
@@ -116,6 +118,8 @@ method.sell = function (parameters, callback) {
     if (params.price > 0 && baseCurrencyAccount.available > products[this.product].base_min_size) {
         this.gdax.sell(params, result);
         logger.log('Sell ' + params.size + ' at ' + params.price + ' (bestAsk=' + bestAsk + ', bestBid=' + bestBid + ')');
+    } else {
+        logger.log('Price is invalid or account have insufficient funds')
     }
 };
 
