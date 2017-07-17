@@ -93,11 +93,11 @@ method.buy = function (parameters, callback) {
         'cancel_after': 'hour',
         'post_only': true // TODO ; config
     };
-    if (params.price > 0 && quoteCurrencyAccount.available > params.price * products[this.product].base_min_size) {
+    if (params.price > 0 && params.size > products[this.product].base_min_size) {
         this.gdax.buy(params, result);
         logger.log('Buy ' + params.size + ' at ' + params.price + ' (bestAsk=' + bestAsk + ', bestBid=' + bestBid + ')');
     } else {
-        logger.log('Price is invalid or account have insufficient funds')
+        logger.log('Price or size is invalid');
     }
 };
 
@@ -115,11 +115,11 @@ method.sell = function (parameters, callback) {
         'post_only': true // TODO ; config
     };
 
-    if (params.price > 0 && baseCurrencyAccount.available > products[this.product].base_min_size) {
+    if (params.price > 0 && params.size > products[this.product].base_min_size) {
         this.gdax.sell(params, result);
         logger.log('Sell ' + params.size + ' at ' + params.price + ' (bestAsk=' + bestAsk + ', bestBid=' + bestBid + ')');
     } else {
-        logger.log('Price is invalid or account have insufficient funds')
+        logger.log('Price or size is invalid');
     }
 };
 
