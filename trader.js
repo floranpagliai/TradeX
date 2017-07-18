@@ -65,18 +65,16 @@ function openPosition(side, size) {
     }
 }
 
-function closePosition(side, size) {
+function closePosition(size) {
     size = typeof size === 'undefined' ? 0 : size;
-    if (activeTrade != null) {
-        if (side == 'SHORT' && activeTrade.side == 'LONG') {
-            exchange.sell({size: size}, function (err, response, data) {
-                if (typeof data['id'] !== 'undefined') {
-                    activeTrade.closingOrderId = data['id'];
-                }
-            });
-        } else if (side == 'LONG' && activeTrade.side == 'SHORT') {
-            // TODO : implement margin trading closing
-        }
+    if (activeTrade.side == 'LONG') {
+        exchange.sell({size: size}, function (err, response, data) {
+            if (typeof data['id'] !== 'undefined') {
+                activeTrade.closingOrderId = data['id'];
+            }
+        });
+    } else if (activeTrade.side == 'SHORT') {
+        // TODO : implement margin trading closing
     }
 }
 
@@ -90,7 +88,9 @@ function trade() {
     let advice = advisor.advice(productRates.lowPrices, productRates.highPrices, productRates.openPrices, productRates.closePrices, productRates.volumes);
     logger.log(tickDateStart + ' to ' + tickDateEnd + ' ' + advice);
     openPosition(advice);
-    closePosition(advice);
+    if (activeTrade != null && advice != activeTrade.side) {
+        closePosition(advice);
+    }
     updateTrailingLoss();
 }
 
@@ -122,7 +122,7 @@ function updateTrailingLoss() {
                         activeTrade = null;
                     });
                 } else if (activeTrade.closingOrderId == null) {
-                    closePosition(activeTrade.side, activeTrade.size);
+                    closePosition();
                 }
             }
         }
@@ -146,7 +146,7 @@ function updateActiveTrade() {
                                 if (typeof data[0] == activeTrade.openingOrderId) {
                                     activeTrade.openingOrderId = null;
                                 }
-                                openPosition(activeTrade.side, activeTrade.size);
+                                openPosition(activeTrade.side);
                             });
                         }
                     } else {
@@ -173,7 +173,7 @@ function updateActiveTrade() {
                                 if (typeof data[0] == activeTrade.closingOrderId) {
                                     activeTrade.closingOrderId = null;
                                 }
-                                closePosition(advisor.trend.side, activeTrade.size);
+                                closePosition();
                             });
                         }
                     } else {
@@ -200,6 +200,7 @@ new CronJob('0 * * * * *', function () {
 }, null, true);
 
 // TODO : save active trade with local json storage
+// TODO : save filled size when cancel
 // TODO : backtest
 
 // let express = require('express');
