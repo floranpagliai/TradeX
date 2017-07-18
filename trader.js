@@ -88,8 +88,8 @@ function trade() {
     let advice = advisor.advice(productRates.lowPrices, productRates.highPrices, productRates.openPrices, productRates.closePrices, productRates.volumes);
     logger.log(tickDateStart + ' to ' + tickDateEnd + ' ' + advice);
     openPosition(advice);
-    if (activeTrade != null && advice != activeTrade.side) {
-        closePosition(advice);
+    if (activeTrade != null && advice != 'WAIT' && advice != activeTrade.side) {
+        closePosition();
     }
     updateTrailingLoss();
 }
@@ -190,6 +190,7 @@ function updateActiveTrade() {
 
 advisor.init();
 exchange.init();
+activeTrade = Trade('BTC-EUR', 'LONG', 0.08, 2035.89, 'test');
 new CronJob('*/15 * * * * *', function () {
     exchange.update();
     exchange.getHistoricRates(historicRatesCallback);
