@@ -162,19 +162,20 @@ function updateActiveTrade() {
                     activeTrade.closingOrderStatus = 'DONE'; // Useless for now
                     activeTrade = null;
                 } else {
-                    // if (activeTrade.side != advisor.trend.side) {
-                    let bestPrice = activeTrade.side == 'LONG' ? exchange.getBestSellingPrice() : exchange.getBestBuyingPrice();
-                    if (price != bestPrice) {
-                        exchange.cancelOrder(activeTrade.closingOrderId, function (err, response, data) {
-                            logger.log('Cancel order closing : ' + JSON.stringify(data));
-                            closePosition(activeTrade.side, activeTrade.size);
+                    if (activeTrade.side != advisor.trend.side) {
+                        let bestPrice = activeTrade.side == 'LONG' ? exchange.getBestSellingPrice() : exchange.getBestBuyingPrice();
+                        if (price != bestPrice) {
+                            exchange.cancelOrder(activeTrade.closingOrderId, function (err, response, data) {
+                                logger.log('Cancel order closing : ' + JSON.stringify(data));
+                                closePosition(advisor.trend.side, activeTrade.size);
+                            });
+                        }
+                    } else {
+                        // Trend revert
+                        exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {
+                            activeTrade.closingOrderId = null;
                         });
                     }
-                    // } else {
-                    //     // Trend revert
-                    //     exchange.cancelOrder(activeTrade.openingOrderId, function (err, response, data) {});
-                    //     activeTrade.closingOrderId = null;
-                    // }
                 }
             });
         }
