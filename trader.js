@@ -190,6 +190,7 @@ function updateActiveTrade() {
 
 advisor.init();
 exchange.init();
+activeTrade = new Trade('BTC-EUR', 'LONG', 0.08, 2035.89, 'test');
 new CronJob('*/15 * * * * *', function () {
     exchange.update();
     exchange.getHistoricRates(historicRatesCallback);
