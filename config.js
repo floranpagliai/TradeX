@@ -23,8 +23,8 @@ config.advisor = {
     },
     awesome_oscillator: {
         thresholds: {
-            down: -0.75,
-            up: 0.75,
+            down: -2,
+            up: 2,
             // How many candle intervals should a trend persist
             // before we consider it real?
             persistence: 1
