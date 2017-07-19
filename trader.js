@@ -102,13 +102,13 @@ function updateTrailingLoss() {
                 averageRange = results[0][results[0].length - 1];
             });
             if (activeTrade.side == 'LONG') {
-                let trailingPrice = productRates.lastLowPrice - (averageRange * config.trade.trailing_loss.weight);
+                let trailingPrice = productRates.lastClosePrice - (averageRange * config.trade.trailing_loss.weight);
                 if (activeTrade.trailingLoss < trailingPrice) {
                     logger.log('Set trailing loss to ' + trailingPrice);
                     activeTrade.trailingLoss = trailingPrice;
                 }
             } else if (activeTrade.side == 'SHORT') {
-                let trailingPrice = productRates.lastHighPrice + (averageRange * config.trade.trailing_loss.weight);
+                let trailingPrice = productRates.lastClosePrice + (averageRange * config.trade.trailing_loss.weight);
                 if (activeTrade.trailingLoss > trailingPrice) {
                     activeTrade.trailingLoss = trailingPrice;
                 }

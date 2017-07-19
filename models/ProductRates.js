@@ -74,6 +74,14 @@ class ProductRates {
     get lastHighPrice() {
         return this._highPrices[this._highPrices.length - 1];
     }
+
+    get lastOpenPrice() {
+        return this._openPrices[this._openPrices.length - 1];
+    }
+
+    get lastClosePrice() {
+        return this._closePrices[this._closePrices.length - 1];
+    }
 }
 
 module.exports = ProductRates;
