@@ -50,7 +50,7 @@ method.getHistoricRates = function (callback) {
 
 method.getBestOrders = function () {
     let result = function (err, response, data) {
-        if (typeof data['asks'] !== 'undefined' && typeof data['bids'] !== 'undefined') {
+        if (data !== null) {
             bestAsk = parseFloat(data['asks'][0][0]);  // device to short (red)
             bestBid = parseFloat(data['bids'][0][0]); // device to long (green)
             spread = (bestAsk - bestBid).toFixed(2);
@@ -62,19 +62,18 @@ method.getBestOrders = function () {
 
 method.getAccounts = function (callback) {
     let result = function (err, response, data) {
-        if (typeof data === 'undefined') {
-            return null;
-        }
-        let quoteCurrencyAccount = null;
-        let baseCurrencyAccount = null;
-        for (let account of data) {
-            if (account['currency'] == config.trade.quote_currency) {
-                quoteCurrencyAccount = account;
-            } else if (account['currency'] == config.trade.base_currency) {
-                baseCurrencyAccount = account;
+        if (data !== null) {
+            let quoteCurrencyAccount = null;
+            let baseCurrencyAccount = null;
+            for (let account of data) {
+                if (account['currency'] == config.trade.quote_currency) {
+                    quoteCurrencyAccount = account;
+                } else if (account['currency'] == config.trade.base_currency) {
+                    baseCurrencyAccount = account;
+                }
             }
+            callback(quoteCurrencyAccount, baseCurrencyAccount)
         }
-        callback(quoteCurrencyAccount, baseCurrencyAccount)
     };
 
     this.gdax.getAccounts(result);
