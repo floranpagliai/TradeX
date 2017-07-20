@@ -36,11 +36,6 @@ let historicRatesCallback = function (err, response, data) {
     }
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
     if (lastTime === null) {
-        lowPrices.pop();
-        highPrices.pop();
-        openPrices.pop();
-        closePrices.pop();
-        volumes.pop();
         advisor.advice(lowPrices, highPrices, openPrices, closePrices, volumes);
     }
     trade();

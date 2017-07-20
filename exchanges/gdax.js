@@ -62,7 +62,7 @@ method.getBestOrders = function () {
 
 method.getAccounts = function (callback) {
     let result = function (err, response, data) {
-        if (data !== null) {
+        if (data !== null && typeof data !== 'undefined') {
             let quoteCurrencyAccount = null;
             let baseCurrencyAccount = null;
             for (let account of data) {
@@ -140,7 +140,7 @@ method.getOrder = function (orderId, callback) {
     this.gdax.getOrder(orderId, result);
 };
 
-method.getBestBuyingPrice = function() {
+method.getBestBuyingPrice = function () {
     let res = parseFloat(bestAsk - products[this.product].quote_increment);
     if (spread == products[this.product].quote_increment) {
         res = parseFloat(bestAsk - spread);
@@ -148,7 +148,7 @@ method.getBestBuyingPrice = function() {
     return res.toFixed(2);
 };
 
-method.getBestSellingPrice = function() {
+method.getBestSellingPrice = function () {
     let res = parseFloat(bestBid + products[this.product].quote_increment);
     if (spread == products[this.product].quote_increment) {
         res = parseFloat(bestBid + spread);
@@ -157,7 +157,7 @@ method.getBestSellingPrice = function() {
 };
 
 method.getBestBid = function () {
-   return bestBid;
+    return bestBid;
 };
 
 method.getBestAsk = function () {
