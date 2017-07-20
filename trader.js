@@ -89,6 +89,7 @@ function trade() {
     logger.log(tickDateStart + ' to ' + tickDateEnd + ' ' + advice);
     openPosition(advice);
     if (activeTrade != null && advice != 'WAIT' && advice != activeTrade.side) {
+        logger.log('enter in close position');
         closePosition();
     }
     updateTrailingLoss();
@@ -122,7 +123,7 @@ function updateTrailingLoss() {
                         activeTrade = null;
                     });
                 } else if (activeTrade.closingOrderId == null) {
-                    closePosition();
+                    // closePosition();
                 }
             }
         }
