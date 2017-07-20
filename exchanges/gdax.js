@@ -83,6 +83,7 @@ method.getAccounts = function (callback) {
 method.buy = function (parameters, callback) {
     let size = parameters.size !== 0 ? parameters.size : Math.floor(quoteCurrencyAccount.available / this.getBestBuyingPrice() * 100) / 100;
     let result = function (err, response, data) {
+        logger.log(JSON.stringify(data));
         callback(err, response, data)
     };
     let params = {
@@ -104,6 +105,7 @@ method.buy = function (parameters, callback) {
 method.sell = function (parameters, callback) {
     let size = parameters.size !== 0 ? parameters.size : baseCurrencyAccount.available;
     let result = function (err, response, data) {
+        logger.log(JSON.stringify(data));
         callback(err, response, data)
     };
     let params = {
