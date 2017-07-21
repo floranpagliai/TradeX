@@ -142,17 +142,13 @@ method.getOrder = function (orderId, callback) {
 
 method.getBestBuyingPrice = function () {
     let res = parseFloat(bestAsk - products[this.product].quote_increment);
-    if (spread == products[this.product].quote_increment) {
-        res = parseFloat(bestAsk - spread);
-    }
+
     return res.toFixed(2);
 };
 
 method.getBestSellingPrice = function () {
     let res = parseFloat(bestBid + products[this.product].quote_increment);
-    if (spread == products[this.product].quote_increment) {
-        res = parseFloat(bestBid + spread);
-    }
+
     return res.toFixed(2);
 };
 
