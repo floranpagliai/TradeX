@@ -62,7 +62,7 @@ method.getBestOrders = function () {
 
 method.getAccounts = function (callback) {
     let result = function (err, response, data) {
-        if (data !== null && typeof data !== 'undefined') {
+        if (data !== null && data instanceof Array) {
             let quoteCurrencyAccount = null;
             let baseCurrencyAccount = null;
             for (let account of data) {
