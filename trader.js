@@ -32,7 +32,7 @@ let historicRatesCallback = function (err, response, data) {
         openPrices.push(data[i][3]);
         closePrices.push(data[i][4]);
         volumes.push(data[i][5]);
-        // console.log(dateFormat(new Date(data[i][0] * 1000)) + advisor.advice(lowPrices, highPrices, openPrices, closePrices, volumes))
+        // console.log(dateFormat(new Date(data[i][0] * 1000)) + ' ' + advisor.advice(lowPrices, highPrices, openPrices, closePrices, volumes))
     }
     productRates = new ProductRates(times, lowPrices, highPrices, openPrices, closePrices, volumes);
     if (lastTime === null) {
@@ -118,7 +118,7 @@ function updateTrailingLoss() {
                         activeTrade = null;
                     });
                 } else if (activeTrade.closingOrderId == null) {
-                    // closePosition();
+                    closePosition();
                 }
             }
         }
@@ -129,6 +129,7 @@ function updateActiveTrade() {
     if (activeTrade !== null) {
         if (activeTrade.openingOrderStatus !== 'DONE') {
             exchange.getOrder(activeTrade.openingOrderId, function (err, response, data) {
+                logger.log(JSON.stringify(data));
                 let status = data['status'];
                 let price = parseFloat(data['price']).toFixed(2);
                 if (status == 'done') {
@@ -155,6 +156,7 @@ function updateActiveTrade() {
         }
         if (activeTrade.closingOrderId !== null && activeTrade.closingOrderStatus !== 'DONE') {
             exchange.getOrder(activeTrade.closingOrderId, function (err, response, data) {
+                logger.log(JSON.stringify(data));
                 let status = data['status'];
                 let price = parseFloat(data['price']).toFixed(2);
                 if (status == 'done') {
@@ -197,6 +199,7 @@ new CronJob('0 * * * * *', function () {
 
 // TODO : save active trade with local json storage
 // TODO : save filled size when cancel
+// TODO : retry
 // TODO : backtest
 
 // let express = require('express');
