@@ -35,7 +35,7 @@ config.advisor = {
 config.trade = {
     base_currency: "BTC",
     quote_currency: "EUR",
-    interval: 300,
+    interval: 3600,
     trailing_loss: {
         interval: 14,
         weight: 2.9
