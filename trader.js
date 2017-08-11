@@ -188,6 +188,8 @@ function updateActiveTrade() {
 
 advisor.init();
 exchange.init();
+activeTrade = new Trade('BTC-EUR', 'LONG', 0.06, 2912.81, 'id');
+activeTrade.openingOrderStatus = 'DONE';
 new CronJob('*/15 * * * * *', function () {
     exchange.update();
     exchange.getHistoricRates(historicRatesCallback);
