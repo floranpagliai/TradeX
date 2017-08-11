@@ -2,7 +2,9 @@ let dateFormat = require('dateformat');
 let tulind = require('tulind');
 let CronJob = require('cron').CronJob;
 let logger = require('./core/Logger.js');
+let low = require('lowdb');
 
+const db = low('var/db.json');
 const Account = require('./models/Account.js');
 const ProductRates = require('./models/ProductRates.js');
 const Trade = require('./models/Trade.js');
@@ -58,6 +60,7 @@ function openPosition(side, size) {
     } else if (side == 'SHORT') {
         // TODO : implement margin trading
     }
+    // TODO : create active trade storage
 }
 
 function closePosition(size) {
@@ -185,12 +188,18 @@ function updateActiveTrade() {
         }
     }
 }
-
+let data = db.get('activeTrade').value();
+if (typeof data !== 'undefined' && data !== null) {
+    activeTrade = new Trade(data._productId, data._side, data._size, data._startingPrice, data._openingOrderId);
+    activeTrade.openingOrderStatus = data._openingOrderStatus;
+    activeTrade.closingOrderId = data._closingOrderId;
+    activeTrade.closingOrderStatus = data._closingOrderStatus;
+    activeTrade.trailingLoss = data._trailingLoss;
+}
 advisor.init();
 exchange.init();
-activeTrade = new Trade('BTC-EUR', 'LONG', 0.06, 2912.81, 'id');
-activeTrade.openingOrderStatus = 'DONE';
 new CronJob('*/15 * * * * *', function () {
+    db.set('activeTrade', activeTrade).write();
     exchange.update();
     exchange.getHistoricRates(historicRatesCallback);
 }, null, true);
@@ -199,7 +208,6 @@ new CronJob('0 * * * * *', function () {
     updateActiveTrade();
 }, null, true);
 
-// TODO : save active trade with local json storage
 // TODO : save filled size when cancel
 // TODO : retry
 // TODO : backtest
