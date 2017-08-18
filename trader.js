@@ -50,7 +50,7 @@ function openPosition(side, size) {
             if (typeof data['id'] !== 'undefined') {
                 if (activeTrade !== null) {
                     activeTrade.openingOrderId = data['id'];
-                    activeTrade.price = data['price'];
+                    activeTrade.startingPrice = data['price'];
                     activeTrade.size = data['size'];
                 } else {
                     activeTrade = new Trade(exchange.product, 'LONG', data['size'], data['price'], data['id']);
