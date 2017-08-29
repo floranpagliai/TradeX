@@ -121,7 +121,7 @@ function updateTrailingLoss() {
                         activeTrade = null;
                     });
                 } else if (activeTrade.closingOrderId == null) {
-                    closePosition();
+                    // closePosition();
                 }
             }
         }
