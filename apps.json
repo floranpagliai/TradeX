@@ -2,15 +2,18 @@
   "apps": [
     {
       "name": "trader BTC-EUR",
-      "script": "./trader.js ./config-btc.js"
+      "script": "./trader.js",
+      "args": ["./config-btc.js"]
     },
     {
       "name": "trader LTC-EUR",
-      "script": "./trader.js ./config-ltc.js"
+      "script": "./trader.js",
+      "args": ["./config-ltc.js"]
     },
     {
       "name": "trader ETH-EUR",
-      "script": "./trader.js ./config-eth.js"
+      "script": "./trader.js",
+      "args": ["./config-eth.js"]
     }
   ]
 }
