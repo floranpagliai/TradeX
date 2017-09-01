@@ -1,15 +1,15 @@
 let tulind = require('tulind');
-let settings = require("../config.js").advisor.MACD;
-
+let settings = {};
 let method = {};
 
-method.init = function () {
+method.init = function (config) {
     this.trend = {
         side: null,
         duration: 0,
         persisted: false,
         adviced: false
     };
+    settings = config;
 };
 
 method.advice = function (closingPrices) {

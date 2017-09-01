@@ -1,7 +1,7 @@
 let Gdax = require('gdax');
 let logger = require('../core/Logger.js');
 const Account = require('../models/Account.js');
-let config = require("../config.js");
+let exchanges = require("../exchanges.js");
 let products = require("./products").gdax;
 
 let bestBid = 0;
@@ -10,22 +10,31 @@ let spread = 0;
 let baseCurrencyAccount = null;
 let quoteCurrencyAccount = null;
 
+let base_currency = null;
+let quote_currency = null;
+let trade_interval = null;
+let wallet_percentage = null;
+
 let method = {};
 
-method.init = function () {
+method.init = function (config) {
     this.use_sandbox = false;
 
-    this.key = config.exchanges.gdax.key;
-    this.secret = config.exchanges.gdax.secret;
-    this.passphrase = config.exchanges.gdax.passphrase;
+    this.key = exchanges.gdax.key;
+    this.secret = exchanges.gdax.secret;
+    this.passphrase = exchanges.gdax.passphrase;
 
-    this.product = [config.trade.base_currency, config.trade.quote_currency].join('-').toUpperCase();
+    this.product = [config.base_currency, config.quote_currency].join('-').toUpperCase();
+    base_currency = config.base_currency;
+    quote_currency = config.quote_currency;
+    trade_interval = config.interval;
+    wallet_percentage = config.wallet_percentage;
 
     this.gdax_public = new Gdax.PublicClient(this.product, this.use_sandbox ? 'https://api-public.sandbox.gdax.com' : undefined);
     this.gdax = new Gdax.AuthenticatedClient(this.key, this.secret, this.passphrase, this.use_sandbox ? 'https://api-public.sandbox.gdax.com' : undefined);
 
-    baseCurrencyAccount = new Account(0, config.trade.base_currency, 0, 0, 0);
-    quoteCurrencyAccount = new Account(0, config.trade.quote_currency, 0, 0, 0);
+    baseCurrencyAccount = new Account(0, base_currency, 0, 0, 0);
+    quoteCurrencyAccount = new Account(0, quote_currency, 0, 0, 0);
     this.getAccounts(function (quoteCurrencyData, baseCurrencyData) {
         quoteCurrencyAccount.update(quoteCurrencyData['balance'], quoteCurrencyData['available'], quoteCurrencyData['hold']);
         baseCurrencyAccount.update(baseCurrencyData['balance'], baseCurrencyData['available'], baseCurrencyData['hold']);
@@ -45,7 +54,7 @@ method.getHistoricRates = function (callback) {
         callback(err, response, data)
     };
 
-    this.gdax_public.getProductHistoricRates({'granularity': config.trade.interval}, result);
+    this.gdax_public.getProductHistoricRates({'granularity': trade_interval}, result);
 };
 
 method.getBestOrders = function () {
@@ -66,9 +75,9 @@ method.getAccounts = function (callback) {
             let quoteCurrencyAccount = null;
             let baseCurrencyAccount = null;
             for (let account of data) {
-                if (account['currency'] == config.trade.quote_currency) {
+                if (account['currency'] == quote_currency) {
                     quoteCurrencyAccount = account;
-                } else if (account['currency'] == config.trade.base_currency) {
+                } else if (account['currency'] ==base_currency) {
                     baseCurrencyAccount = account;
                 }
             }
@@ -80,7 +89,8 @@ method.getAccounts = function (callback) {
 };
 
 method.buy = function (parameters, callback) {
-    let size = parameters.size !== 0 ? parameters.size : Math.floor(quoteCurrencyAccount.available / this.getBestBuyingPrice() * 100) / 100;
+    let available = quoteCurrencyAccount.available * wallet_percentage / 100;
+    let size = parameters.size !== 0 ? parameters.size : Math.floor(available / this.getBestBuyingPrice() * 100) / 100;
     let result = function (err, response, data) {
         logger.log(JSON.stringify(data));
         callback(err, response, data)

@@ -3,13 +3,13 @@ let ao = require('./AwesomeOscillator');
 
 let method = {};
 
-method.init = function () {
+method.init = function (config) {
     this.trend = {
         side: null,
         adviced: false
     };
-    MACD.init();
-    ao.init();
+    MACD.init(config.MACD);
+    ao.init(config.awesome_oscillator);
 };
 
 method.advice = function (lowPrices, highPrices, openPrices, closePrices, volumes) {
