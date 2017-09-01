@@ -19,7 +19,7 @@ let lastTime = null;
 let activeTrade = null;
 
 let historicRatesCallback = function (err, response, data) {
-    if (data === null || productRates.lastTime >= data[0][0]) {
+    if (data === null || typeof data[0] === 'undefined' || productRates.lastTime >= data[0][0]) {
         return null;
     }
     data.reverse();
