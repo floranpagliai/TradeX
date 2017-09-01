@@ -200,6 +200,7 @@ if (typeof data !== 'undefined' && data !== null) {
 }
 advisor.init(config.advisor);
 exchange.init(config.trade);
+logger.init(dbname);
 new CronJob('*/15 * * * * *', function () {
     db.set(dbname + '.activeTrade', activeTrade).write();
     exchange.update();
