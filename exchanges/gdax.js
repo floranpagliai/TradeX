@@ -49,6 +49,10 @@ method.update = function () {
     this.getBestOrders();
 };
 
+method.getProducts = function (callback) {
+    this.gdax_public.getProducts(callback);
+};
+
 method.getHistoricRates = function (callback) {
     let result = function (err, response, data) {
         callback(err, response, data)
