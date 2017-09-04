@@ -13,7 +13,6 @@ let advisor = require('./strategies/Advisor');
 let exchange = require("./exchanges/gdax");
 
 const dbname = [config.trade.base_currency, config.trade.quote_currency].join('-').toUpperCase();
-db.set(dbname, {}).write();
 let productRates = [];
 let lastTime = null;
 let activeTrade = null;

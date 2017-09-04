@@ -15,7 +15,7 @@ method.init = function (config) {
 method.advice = function (lowPrices, highPrices, openPrices, closePrices, volumes) {
     MACD.advice(closePrices);
     ao.advice(highPrices, lowPrices);
-    if (MACD.trend.side == ao.trend.side && MACD.trend.adviced && ao.trend.adviced && MACD.trend.duration >= ao.trend.duration) {
+    if (MACD.trend.side == ao.trend.side && MACD.trend.adviced && ao.trend.adviced) {
         if (MACD.trend.side != this.trend.side) {
             this.trend = {
                 side: MACD.trend.side,

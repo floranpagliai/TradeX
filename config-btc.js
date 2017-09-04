@@ -19,7 +19,7 @@ config.advisor = {
             up: 2,
             // How many candle intervals should a trend persist
             // before we consider it real?
-            persistence: 1
+            persistence: 2
         }
     }
 };
