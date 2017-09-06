@@ -2,17 +2,19 @@ let dateFormat = require('dateformat');
 let tulind = require('tulind');
 let CronJob = require('cron').CronJob;
 let logger = require('./core/Logger.js');
-let low = require('lowdb');
 
+const low = require('lowdb');
+const FileSync = require('lowdb/adapters/FileSync');
 const Account = require('./models/Account.js');
 const ProductRates = require('./models/ProductRates.js');
 const Trade = require('./models/Trade.js');
-let db = low('var/db.json');
+const adapter = new FileSync('var/db.json');
+const db = low(adapter);
+
 let config = require(process.argv[2]);
 let advisor = require('./strategies/Advisor');
-let exchange = require("./exchanges/gdax");
+let exchange = require("./exchanges/" + config.trade.exchange + ".js");
 
-const dbname = [config.trade.base_currency, config.trade.quote_currency].join('-').toUpperCase();
 let productRates = [];
 let lastTime = null;
 let activeTrade = null;
@@ -61,7 +63,6 @@ function openPosition(side, size) {
     } else if (side == 'SHORT') {
         // TODO : implement margin trading
     }
-    // TODO : create active trade storage
 }
 
 function closePosition(size) {
@@ -189,7 +190,12 @@ function updateActiveTrade() {
         }
     }
 }
-let data = db.get(dbname + '.activeTrade').value();
+
+advisor.init(config.advisor);
+exchange.init(config.trade);
+logger.init(exchange.product);
+db.defaults({activeTrades: []}).write();
+let data = db.get('activeTrades').find({_productId: exchange.product}).value();
 if (typeof data !== 'undefined' && data !== null) {
     activeTrade = new Trade(data._productId, data._side, data._size, data._startingPrice, data._openingOrderId);
     activeTrade.openingOrderStatus = data._openingOrderStatus;
@@ -197,11 +203,12 @@ if (typeof data !== 'undefined' && data !== null) {
     activeTrade.closingOrderStatus = data._closingOrderStatus;
     activeTrade.trailingLoss = data._trailingLoss;
 }
-advisor.init(config.advisor);
-exchange.init(config.trade);
-logger.init(dbname);
+
 new CronJob('*/15 * * * * *', function () {
-    db.set(dbname + '.activeTrade', activeTrade).write();
+    db.get('activeTrades').remove({_productId: exchange.product}).write();
+    if (activeTrade !== null) {
+        db.get('activeTrades').push(activeTrade).write();
+    }
     exchange.update();
     exchange.getHistoricRates(historicRatesCallback);
 }, null, true);
@@ -213,6 +220,8 @@ new CronJob('0 * * * * *', function () {
 // TODO : save filled size when cancel
 // TODO : retry
 // TODO : backtest
+// TODO : save accounts and use it to do op and update each interval
+// TODO : calc amount with currency to proper handle wallet percentage
 
 // let express = require('express');
 //

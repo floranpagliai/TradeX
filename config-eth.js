@@ -25,6 +25,7 @@ config.advisor = {
 };
 
 config.trade = {
+    exchange: "gdax",
     base_currency: "ETH",
     quote_currency: "EUR",
     interval: 3600,
